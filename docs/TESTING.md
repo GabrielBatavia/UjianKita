@@ -1,56 +1,63 @@
-# Testing & Quality Assurance
+# Testing Strategy & Verification Matrix
 
-UjianKita enforces automated checks across static typing, linting, unit tests, route authorization boundaries, production builds, and browser E2E / WCAG accessibility audits.
-
----
-
-## 1. Test Layers
-
-| Layer | Tooling | Location | Purpose |
-|---|---|---|---|
-| **Static Type Checking** | TypeScript (`strict: true`, `noUncheckedIndexedAccess: true`) | `tsconfig.json` | Eliminates implicit `any`, nullability errors, and unsafe indexing |
-| **Linting** | ESLint (`eslint-config-next/core-web-vitals`, `typescript`) | `eslint.config.mjs` | React hooks discipline, Next.js best practices, accessibility lint rules |
-| **Unit Tests** | Vitest + React Testing Library | `tests/unit/*.test.ts(x)` | Zod schemas, RBAC policies, tenant boundaries, rate limiter, security helpers, Phase 2 domain state machine, UI form validation |
-| **API & Live RLS Tests** | Vitest | `tests/integration/api-boundaries.test.ts` | Unauthenticated fail-closed API checks; optional live Supabase RLS & `audit_events` immutability verification |
-| **E2E, Responsive & WCAG** | Playwright + `@axe-core/playwright` | `tests/e2e/foundation.spec.ts` | Security headers, `/api/health`, fail-closed auth redirects, horizontal overflow on Desktop/Android/iPhone viewports, WCAG 2.2 AA rules |
+UjianKita separates **offline verification** (domain unit tests, schema validation, React UI tests, route-handler auth checks, mocked service-boundary checks, and Playwright browser/WCAG tests) from **live PostgreSQL / Supabase RLS & RPC verification**, reporting both transparently.
 
 ---
 
-## 2. Running Checks Locally
+## 1. Test Commands
+
+| Command | Scope | Tools |
+|---|---|---|
+| `npm run lint` | ESLint 9 + Next.js / React Hooks rules | ESLint |
+| `npm run typecheck` | Strict TypeScript check (`strict: true`, `noUncheckedIndexedAccess: true`) | `tsc --noEmit` |
+| `npm run test` | Unit + offline integration + mocked service-boundary + live-conditional RLS suite | Vitest + Testing Library |
+| `npm run build` | Production Next.js Turbopack build | `next build` |
+| `npm run test:e2e` | End-to-end desktop Chromium, Pixel 7 Android, and iPhone 13 WebKit UI, fail-closed redirect, security header, and `@axe-core/playwright` WCAG 2.2 AA suites | Playwright |
+
+---
+
+## 2. Vitest Coverage Breakdown
+
+### Unit Suites (`tests/unit/`)
+- `authorization.test.ts` — Phase 1 & Phase 2 RBAC permissions (`questions.*`, `exams.*`), school isolation, redirect sanitization.
+- `schemas.test.ts` — Zod validation for auth, academic administration, and Question Bank / Exam inputs.
+- `security-and-rate-limit.test.ts` — Safe error mapping and sliding-window throttling behavior.
+- `exam-contracts.test.ts` — Phase 3 attempt state machine and revision/idempotency contracts.
+- `question-bank.test.ts` — Domain validation for `single_choice`, `multiple_choice`, `true_false`, and `essay`, fingerprint deduplication, and `renderSafeQuestionHtml` XSS neutralization + KaTeX rendering.
+- `import-parser.test.ts` — CSV & Excel (`.xlsx`) template generation/parsing, formula cell rejection, formula prefix rejection, duplicate detection, file extension/size limits.
+- `exam-lifecycle.test.ts` — Status transitions (`DRAFT -> READY_FOR_REVIEW -> PUBLISHED -> CLOSED -> ARCHIVED`, explicit `PUBLISHED -> DRAFT`), readiness checklist, cross-exam class schedule conflict detection, and deterministic shuffle seed stability with pinned items.
+- `ui-components.test.tsx` & `phase2-ui.test.tsx` — Client component behavior (`LoginForm`, `QuestionEditor`, `ExamPreviewClient` desktop/mobile toggle & answer-key safety).
+
+### Integration Suites (`tests/integration/`)
+- `api-boundaries.test.ts` — Unauthenticated fail-closed API responses for Phase 1 routes + conditional live RLS verification (`hasLiveSupabase`).
+- `phase2-api-and-rls.test.ts`:
+  - **Offline Route Boundary Tests:** Verifies unauthenticated callers fail closed (`401`/`503`) on `/api/teacher/questions`, `/api/teacher/exams`, `/api/teacher/exams/[id]/publish`, `/api/teacher/exams/[id]/preview`, and `/api/admin/exams`.
+  - **Offline Mocked Service-Boundary Tests:** Uses mocked Supabase query builders at the test boundary to verify:
+    1. `student` role receives `403 FORBIDDEN` across Question Bank and Exam mutations.
+    2. `teacher` access to unassigned subjects (`SUBJECT_FORBIDDEN`) or unassigned classes (`CLASS_FORBIDDEN`) is rejected with `403`.
+    3. Stale `version_lock` writes return `409 CONCURRENCY_CONFLICT`.
+    4. `buildStudentSafeExamPreview()` never queries `exam_version_answer_keys` / `question_answer_keys` and strips explanations, scoring policies, and grading rubrics from both draft and published projections.
+  - **Live Supabase PostgreSQL RLS & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Automatically skipped when `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and `TEST_SUPABASE_SERVICE_ROLE_KEY` are unset. Must be executed against a real PostgreSQL / Supabase instance before declaring end-to-end DB readiness.
+
+---
+
+## 3. Running Live Database Integration Tests (Non-Production Only)
+
+Provide isolated test-project environment variables (`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`) after applying migrations `000001` through `000005`:
 
 ```bash
-# 1. Lint & TypeScript
-npm run lint
-npm run typecheck
-
-# 2. Unit & offline integration suite
-npm run test
-
-# 3. Production build check
-npm run build
-
-# 4. Playwright E2E + WCAG checks (requires Chromium browser installed)
-npx playwright install chromium
-npm run test:e2e
+TEST_SUPABASE_URL=... TEST_SUPABASE_ANON_KEY=... TEST_SUPABASE_SERVICE_ROLE_KEY=... npm run test
 ```
+
+If local Docker is available, run `npx supabase start` and apply `supabase/migrations/` locally rather than touching production databases.
 
 ---
 
-## 3. Running Live Supabase RLS Verification
+## 4. Playwright Browser & Accessibility Matrix (`tests/e2e/foundation.spec.ts`)
 
-The integration test file `tests/integration/api-boundaries.test.ts` includes a live PostgreSQL RLS suite that is safely skipped when live test credentials are absent. To execute it against a **synthetic** Supabase test project (never production):
+Runs against `npm run build` via `npm run test:e2e` across three projects (`playwright.config.ts`):
+1. **`desktop-chromium`**
+2. **`mobile-android`** (`Pixel 7`)
+3. **`mobile-iphone`** (`iPhone 13` WebKit)
 
-```bash
-export TEST_SUPABASE_URL="https://your-test-project.supabase.co"
-export TEST_SUPABASE_ANON_KEY="your-test-anon-key"
-export TEST_SUPABASE_SERVICE_ROLE_KEY="your-test-service-role-key"
-npm run test:integration
-```
-
----
-
-## 4. Reporting Standards
-
-Per project engineering rules:
-- Unit test success does **not** certify live Supabase connectivity or RLS enforcement unless live database tests have actually executed against a migrated Supabase instance.
-- All test results distinguish between offline/unit verification and live integration verification.
+Verifies security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`), zero horizontal overflow on landing/auth views, fail-closed redirects to `/login` across Phase 1 and Phase 2 portal routes (including `/teacher/questions/*`, `/teacher/exams/*`, `/teacher/schedules`, `/admin/exams/*`), fail-closed API responses, zero uncaught `pageerror` exceptions, and zero WCAG 2.2 AA `@axe-core/playwright` violations on public auth entry points.
