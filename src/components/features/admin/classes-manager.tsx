@@ -181,6 +181,24 @@ export function ClassesManager({
     }
   }
 
+  async function handleActivateYear(yearId: string) {
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/academic-years/${yearId}/activate`, {
+        method: "PATCH",
+      });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = (await res.json()) as { error?: string };
+        setFormError(data.error ?? "Gagal mengaktifkan tahun ajaran.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <Tabs defaultValue="classes">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -292,6 +310,7 @@ export function ClassesManager({
                 <TableHead>Semester</TableHead>
                 <TableHead>Periode</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -306,6 +325,21 @@ export function ClassesManager({
                     <Badge variant={y.is_active ? "success" : "neutral"}>
                       {y.is_active ? "Aktif" : "Arsip"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {!y.is_active ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={submitting}
+                        onClick={() => handleActivateYear(y.id)}
+                      >
+                        Aktifkan
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-slate-500">Sedang Berjalan</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

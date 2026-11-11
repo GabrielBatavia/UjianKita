@@ -17,8 +17,12 @@ UjianKita uses Supabase PostgreSQL with versioned SQL migrations located in `sup
    - Defines `SECURITY DEFINER` authorization helpers (`auth_school_id`, `auth_has_role`, `auth_is_school_admin`, `auth_teacher_teaches_class`, `auth_student_in_class`, `auth_teacher_teaches_student`, `auth_can_read_profile`) with `SET search_path = public, auth` to prevent RLS recursion.
    - Enables RLS on every `public` table and applies least-privilege policies.
 
-3. [`supabase/seed.sql`](../supabase/seed.sql) *(Non-production development only)*
-   - Inserts one synthetic school (`SMAN1-SIMULASI`), one active academic year (`2026/2027`), and baseline subjects. Never run against production data.
+3. [`20261112000003_phase1_5_hardening.sql`](../supabase/migrations/20261112000003_phase1_5_hardening.sql)
+   - Installs cross-school relational integrity triggers (`trg_enforce_same_school_classes`, `trg_enforce_same_school_enrollments`, `trg_enforce_same_school_teacher_assignments`) preventing foreign keys from bridging different schools.
+   - Adds the atomic `public.activate_academic_year(target_year_id uuid)` RPC function for safely switching the active academic year within a single transaction.
+
+4. [`supabase/seed.sql`](../supabase/seed.sql) and [`scripts/bootstrap-synthetic-school.ts`](../scripts/bootstrap-synthetic-school.ts) *(Non-production development only)*
+   - Inserts one synthetic school (`SMAN1-SIMULASI`), one active academic year (`2026/2027`), baseline subjects, and optional synthetic role test accounts (`admin`, `teacher`, `student`). Never run against production data.
 
 ---
 

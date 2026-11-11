@@ -335,6 +335,13 @@ export async function updateStudentService(
     }
   }
 
+  if (existing.is_active !== input.isActive && getPublicEnvStatus().serviceRoleConfigured) {
+    const adminClient = createSupabaseAdminClient();
+    await adminClient.auth.admin.updateUserById(existing.user_id, {
+      ban_duration: input.isActive ? "none" : "876000h",
+    });
+  }
+
   await recordAuditEvent(supabase, {
     schoolId: actor.schoolId,
     actorUserId: actor.userId,
@@ -547,6 +554,13 @@ export async function updateTeacherService(
     );
   }
 
+  if (existing.is_active !== input.isActive && getPublicEnvStatus().serviceRoleConfigured) {
+    const adminClient = createSupabaseAdminClient();
+    await adminClient.auth.admin.updateUserById(existing.user_id, {
+      ban_duration: input.isActive ? "none" : "876000h",
+    });
+  }
+
   await recordAuditEvent(supabase, {
     schoolId: actor.schoolId,
     actorUserId: actor.userId,
@@ -577,6 +591,42 @@ export async function assignTeacherService(
     );
   }
   const input = parsed.data;
+
+  // Verify every referenced entity belongs to the actor's school
+  const [teacherRes, classRes, subjectRes, yearRes] = await Promise.all([
+    supabase
+      .from("teachers")
+      .select("id")
+      .eq("id", input.teacherId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle(),
+    supabase
+      .from("classes")
+      .select("id")
+      .eq("id", input.classId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle(),
+    supabase
+      .from("subjects")
+      .select("id")
+      .eq("id", input.subjectId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle(),
+    supabase
+      .from("academic_years")
+      .select("id")
+      .eq("id", input.academicYearId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle(),
+  ]);
+
+  if (!teacherRes.data || !classRes.data || !subjectRes.data || !yearRes.data) {
+    throw new ServiceError(
+      400,
+      "INVALID_SCHOOL_REFERENCE",
+      "Guru, kelas, mata pelajaran, atau tahun ajaran tidak ditemukan pada sekolah ini."
+    );
+  }
 
   const { data: created, error } = await supabase
     .from("teacher_assignments")
@@ -726,6 +776,46 @@ export async function createAcademicYearService(
   return { id: created.id as string };
 }
 
+export async function activateAcademicYearService(
+  supabase: SupabaseClient,
+  actor: AuthenticatedActor,
+  academicYearId: string,
+  ctx: RequestAuditContext
+): Promise<void> {
+  assertAdminPermission(actor, "classes.write");
+
+  const { data: targetYear, error: fetchErr } = await supabase
+    .from("academic_years")
+    .select("id, name, semester")
+    .eq("id", academicYearId)
+    .eq("school_id", actor.schoolId)
+    .maybeSingle();
+
+  if (fetchErr || !targetYear) {
+    throw new ServiceError(404, "ACADEMIC_YEAR_NOT_FOUND", "Tahun ajaran tidak ditemukan.");
+  }
+
+  const { error: rpcErr } = await supabase.rpc("activate_academic_year", {
+    target_year_id: academicYearId,
+  });
+
+  if (rpcErr) {
+    throw new ServiceError(400, "ACADEMIC_YEAR_ACTIVATE_FAILED", "Gagal mengaktifkan tahun ajaran.");
+  }
+
+  await recordAuditEvent(supabase, {
+    schoolId: actor.schoolId,
+    actorUserId: actor.userId,
+    actorRole: actor.primaryRole,
+    action: "academic_year.activated",
+    entityType: "academic_year",
+    entityId: academicYearId,
+    summary: `Mengaktifkan tahun ajaran ${targetYear.name} (${targetYear.semester})`,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+  });
+}
+
 export async function createClassService(
   supabase: SupabaseClient,
   actor: AuthenticatedActor,
@@ -742,6 +832,30 @@ export async function createClassService(
     );
   }
   const input = parsed.data;
+
+  const { data: validYear } = await supabase
+    .from("academic_years")
+    .select("id")
+    .eq("id", input.academicYearId)
+    .eq("school_id", actor.schoolId)
+    .maybeSingle();
+
+  if (!validYear) {
+    throw new ServiceError(400, "INVALID_ACADEMIC_YEAR", "Tahun ajaran tidak valid untuk sekolah ini.");
+  }
+
+  if (input.homeroomTeacherId) {
+    const { data: validTeacher } = await supabase
+      .from("teachers")
+      .select("id")
+      .eq("id", input.homeroomTeacherId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle();
+
+    if (!validTeacher) {
+      throw new ServiceError(400, "INVALID_TEACHER", "Wali kelas tidak ditemukan pada sekolah ini.");
+    }
+  }
 
   const { data: created, error } = await supabase
     .from("classes")
@@ -800,6 +914,19 @@ export async function updateClassService(
     );
   }
   const input = parsed.data;
+
+  if (input.homeroomTeacherId) {
+    const { data: validTeacher } = await supabase
+      .from("teachers")
+      .select("id")
+      .eq("id", input.homeroomTeacherId)
+      .eq("school_id", actor.schoolId)
+      .maybeSingle();
+
+    if (!validTeacher) {
+      throw new ServiceError(400, "INVALID_TEACHER", "Wali kelas tidak ditemukan pada sekolah ini.");
+    }
+  }
 
   const { error } = await supabase
     .from("classes")

@@ -26,6 +26,7 @@ This document explains how to deploy **UjianKita** with **Supabase** (PostgreSQL
    - Or via the Supabase SQL Editor, execute:
      1. `supabase/migrations/20261112000001_phase1_foundation_schema.sql`
      2. `supabase/migrations/20261112000002_phase1_rls_and_functions.sql`
+     3. `supabase/migrations/20261112000003_phase1_5_hardening.sql`
 3. **Configure Authentication settings** in Supabase Dashboard (`Authentication -> URL Configuration` and `Providers -> Email`):
    - Disable open self-signups (`Enable Sign-ups = OFF`).
    - Add your Vercel preview/production URLs and `http://localhost:3000/auth/callback` to **Redirect URLs**.
