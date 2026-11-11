@@ -7,12 +7,18 @@ import {
   BookOpen,
   CalendarClock,
   ClipboardList,
+  Database,
+  Eye,
+  FilePlus2,
+  FileSpreadsheet,
   GraduationCap,
   History,
   LayoutDashboard,
   Menu,
+  PlusCircle,
   School,
   Settings,
+  ShieldAlert,
   UserCheck,
   UserCircle,
   Users,
@@ -33,7 +39,14 @@ export type NavIconName =
   | "settings"
   | "exams"
   | "history"
-  | "profile";
+  | "profile"
+  | "questions"
+  | "newQuestion"
+  | "importQuestions"
+  | "newExam"
+  | "schedules"
+  | "oversight"
+  | "preview";
 
 export interface PortalNavItem {
   href: string;
@@ -52,6 +65,13 @@ const ICON_MAP: Record<NavIconName, React.ComponentType<{ className?: string }>>
   exams: ClipboardList,
   history: History,
   profile: UserCircle,
+  questions: Database,
+  newQuestion: FilePlus2,
+  importQuestions: FileSpreadsheet,
+  newExam: PlusCircle,
+  schedules: CalendarClock,
+  oversight: ShieldAlert,
+  preview: Eye,
 };
 
 const ROLE_LABELS: Record<Phase1RoleCode, string> = {
@@ -68,6 +88,7 @@ export function getNavItemsForRole(role: Phase1RoleCode): PortalNavItem[] {
       { href: "/admin/teachers", label: "Data Guru", icon: "teachers" },
       { href: "/admin/classes", label: "Kelas & Tahun Ajaran", icon: "classes" },
       { href: "/admin/subjects", label: "Mata Pelajaran", icon: "subjects" },
+      { href: "/admin/exams", label: "Pengawasan Ujian", icon: "oversight" },
       { href: "/admin/settings", label: "Pengaturan & Audit", icon: "settings" },
     ];
   }
@@ -77,14 +98,19 @@ export function getNavItemsForRole(role: Phase1RoleCode): PortalNavItem[] {
       { href: "/teacher", label: "Ringkasan", icon: "dashboard" },
       { href: "/teacher/classes", label: "Kelas Diampu", icon: "classes" },
       { href: "/teacher/subjects", label: "Mata Pelajaran", icon: "subjects" },
-      { href: "/teacher/exams", label: "Modul Ujian", icon: "exams", badge: "Fase 2" },
+      { href: "/teacher/questions", label: "Bank Soal", icon: "questions" },
+      { href: "/teacher/questions/new", label: "Buat Soal", icon: "newQuestion" },
+      { href: "/teacher/questions/import", label: "Impor Soal", icon: "importQuestions" },
+      { href: "/teacher/exams", label: "Manajemen Ujian", icon: "exams" },
+      { href: "/teacher/exams/new", label: "Buat Ujian", icon: "newExam" },
+      { href: "/teacher/schedules", label: "Jadwal Ujian", icon: "schedules" },
     ];
   }
 
   return [
     { href: "/student", label: "Beranda", icon: "dashboard" },
-    { href: "/student/exams", label: "Jadwal Ujian", icon: "exams", badge: "Fase 2" },
-    { href: "/student/history", label: "Riwayat Ujian", icon: "history", badge: "Fase 2" },
+    { href: "/student/exams", label: "Jadwal Ujian", icon: "exams", badge: "Fase 3" },
+    { href: "/student/history", label: "Riwayat Ujian", icon: "history", badge: "Fase 3" },
     { href: "/student/profile", label: "Profil Saya", icon: "profile" },
   ];
 }
@@ -101,8 +127,29 @@ export function PortalShell({
   const navItems = getNavItemsForRole(actor.primaryRole);
 
   const isNavItemActive = (href: string) => {
-    if (href === "/admin" || href === "/teacher" || href === "/student") {
+    if (
+      href === "/admin" ||
+      href === "/teacher" ||
+      href === "/student" ||
+      href === "/teacher/questions/new" ||
+      href === "/teacher/questions/import" ||
+      href === "/teacher/exams/new"
+    ) {
       return pathname === href;
+    }
+    if (href === "/teacher/questions") {
+      return (
+        pathname === href ||
+        (pathname.startsWith("/teacher/questions/") &&
+          !pathname.startsWith("/teacher/questions/new") &&
+          !pathname.startsWith("/teacher/questions/import"))
+      );
+    }
+    if (href === "/teacher/exams") {
+      return (
+        pathname === href ||
+        (pathname.startsWith("/teacher/exams/") && !pathname.startsWith("/teacher/exams/new"))
+      );
     }
     return pathname === href || pathname.startsWith(`${href}/`);
   };

@@ -38,3 +38,13 @@ export async function requireRoleActor(role: Phase1RoleCode): Promise<Authentica
   }
   return actor;
 }
+
+export async function requireAnyRoleActor(
+  roles: readonly Phase1RoleCode[]
+): Promise<AuthenticatedActor> {
+  const actor = await requireAuthenticatedActor();
+  if (!roles.some((r) => hasRole(actor.roles, r))) {
+    throw new ServiceError(403, "FORBIDDEN", "Anda tidak memiliki izin untuk mengakses sumber daya ini.");
+  }
+  return actor;
+}

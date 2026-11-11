@@ -9,7 +9,7 @@ UjianKita is structured as a **modular monolith** built on Next.js App Router, p
 1. **No client trust:** Roles, school boundaries, and future examination timers/deadlines/scores are verified authoritatively on the server and enforced by PostgreSQL Row Level Security (RLS).
 2. **Strict layer separation:** React components and route handlers do not embed business logic or direct database policy shortcuts.
 3. **Portable foundation:** All business rules, schemas, and SQL migrations use standard Next.js APIs and PostgreSQL/Supabase primitives without proprietary lock-in to hosting-specific queues or microservices.
-4. **Honest Phase 1 boundaries:** Phase 1 delivers authentication, academic administration, audit logging, and role portals while preparing typed domain contracts for Phase 2 examination reliability without fabricating exam results or mocking active exam capabilities.
+4. **Honest Phase 2 boundaries:** Phase 1–2 deliver authentication, school academic administration, immutable audit logging, the complete Question Bank, and the Examination Management & Publishing workflow producing frozen `exam_versions` snapshots. Student examination attempt delivery, answer saving, grading, and live proctoring remain explicitly scoped for Phase 3–4 without fabricating attempt or grade records.
 
 ---
 
@@ -21,22 +21,25 @@ src/
 ├── app/
 │   ├── (auth)/                # Public auth views (/login, /forgot-password, /reset-password, /auth/callback)
 │   ├── (portal)/              # Authenticated role-scoped workspaces (/admin, /teacher, /student, /dashboard)
-│   └── api/                   # Thin REST handlers (/api/health, /api/auth/*, /api/admin/*)
+│   │   ├── admin/exams/       # Admin exam oversight list, detail, snapshot history, and preview
+│   │   ├── teacher/questions/ # Teacher Question Bank, create/edit revisions, CSV/XLSX import
+│   │   └── teacher/exams/     # Exam builder, configuration, scheduling, publish, and preview
+│   └── api/                   # Thin REST handlers (/api/health, /api/auth/*, /api/admin/*, /api/teacher/*)
 ├── components/
 │   ├── ui/                    # Reusable shadcn/Radix accessible primitives
 │   ├── layout/                # PortalShell, navigation menus, EmptyState, UpcomingModuleCard, AccessDenied
-│   └── features/              # Feature client forms & tables (auth, admin CRUD managers)
-├── domain/                    # Pure domain models & Phase 2/3 reliability contracts
+│   └── features/              # Feature client forms, QuestionEditor, QuestionImportWizard, ExamWorkspace, ExamPreviewClient
+├── domain/                    # Pure domain models, Phase 2 validation/lifecycle, & Phase 3 reliability contracts
 │   ├── auth/                  # Actor, role, permission types
 │   ├── academic/              # School, academic year, class, subject, teacher, student types
 │   ├── audit/                 # Audit action enums & payload shapes
-│   ├── exams/                 # Future attempt state machine, revision/idempotency rules, SEB/ExamBro contracts
+│   ├── exams/                 # Phase 2 Question rules, CSV/XLSX parser, lifecycle & Phase 3 attempt/SEB contracts
 │   └── system/                # Health telemetry types
 ├── policies/                  # Pure RBAC + tenant + record ownership authorization functions
-├── schemas/                   # Zod input & environment validation schemas
-├── repositories/              # Typed Supabase data access queries
-├── services/                  # Business logic orchestration (policies + repositories + audit events)
-└── lib/                       # Env validation, sliding-window rate limiter, security helpers, Supabase clients
+├── schemas/                   # Zod input & environment validation schemas (`exams.ts`, `academic.ts`, `auth.ts`)
+├── repositories/              # Typed Supabase data access queries (`question-bank-repository.ts`, `exam-repository.ts`, etc.)
+├── services/                  # Business logic orchestration (`question-bank-service.ts`, `exam-service.ts`, `admin-service.ts`, `auth-service.ts`)
+└── lib/                       # Env validation, sliding-window rate limiter, `question-content.ts` (Safe KaTeX), security helpers, Supabase clients
 ```
 
 ---

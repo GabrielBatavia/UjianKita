@@ -33,7 +33,9 @@ describe("LoginForm & Portal navigation UI", () => {
     expect(adminNav.some((i) => i.href === "/student")).toBe(false);
 
     const teacherNav = getNavItemsForRole("teacher");
-    expect(teacherNav.find((i) => i.href === "/teacher/exams")?.badge).toBe("Fase 2");
+    expect(teacherNav.some((i) => i.href === "/teacher/questions")).toBe(true);
+    expect(teacherNav.some((i) => i.href === "/teacher/exams")).toBe(true);
+    expect(teacherNav.some((i) => i.href === "/teacher/schedules")).toBe(true);
 
     const studentNav = getNavItemsForRole("student");
     expect(studentNav.some((i) => i.href === "/student/profile")).toBe(true);

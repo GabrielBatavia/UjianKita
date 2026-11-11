@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, School } from "lucide-react";
+import { ArrowRight, BookOpen, ClipboardList, Database, School } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireRoleActor } from "@/services/auth-service";
+import { listExamsService } from "@/services/exam-service";
+import { listQuestionsService } from "@/services/question-bank-service";
 import { getTeacherWorkspace } from "@/services/teacher-service";
 import { PageHeader } from "@/components/layout/page-header";
 import { UpcomingModuleCard } from "@/components/layout/upcoming-module-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -18,7 +21,12 @@ export const dynamic = "force-dynamic";
 export default async function TeacherOverviewPage() {
   const actor = await requireRoleActor("teacher");
   const supabase = await createSupabaseServerClient();
-  const data = await getTeacherWorkspace(supabase, actor);
+
+  const [data, questionsSummary, examsSummary] = await Promise.all([
+    getTeacherWorkspace(supabase, actor),
+    listQuestionsService(supabase, actor, { page: 1, pageSize: 5 }),
+    listExamsService(supabase, actor, { page: 1, pageSize: 5 }),
+  ]);
 
   const totalAssignedStudents = data.assignedClasses.reduce(
     (sum, cls) => sum + cls.student_count,
@@ -29,10 +37,20 @@ export default async function TeacherOverviewPage() {
     <div className="space-y-6">
       <PageHeader
         title={`Selamat Datang, ${actor.fullName}`}
-        description={`Ruang kerja guru untuk ${actor.schoolName}. Menampilkan kelas dan mata pelajaran yang ditugaskan kepada Anda.`}
+        description={`Ruang kerja guru untuk ${actor.schoolName}. Kelola bank soal, penyusunan ujian, jadwal, dan kelas yang diampu.`}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/teacher/questions/new">Buat Soal</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/teacher/exams/new">Buat Ujian</Link>
+            </Button>
+          </div>
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link href="/teacher/classes" className="group">
           <Card className="h-full transition-colors group-hover:border-blue-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -42,7 +60,7 @@ export default async function TeacherOverviewPage() {
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">{data.assignedClasses.length}</div>
               <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
-                <span>Lihat kelas</span>
+                <span>{totalAssignedStudents} siswa aktif</span>
                 <ArrowRight className="h-3 w-3" aria-hidden="true" />
               </p>
             </CardContent>
@@ -67,15 +85,37 @@ export default async function TeacherOverviewPage() {
           </Card>
         </Link>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Siswa di Kelas Diampu</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{totalAssignedStudents}</div>
-            <p className="mt-1 text-xs text-slate-500">Berdasarkan pendaftaran kelas aktif</p>
-          </CardContent>
-        </Card>
+        <Link href="/teacher/questions" className="group">
+          <Card className="h-full transition-colors group-hover:border-blue-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Bank Soal</CardDescription>
+              <Database className="h-4 w-4 text-blue-700" aria-hidden="true" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">{questionsSummary.total}</div>
+              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
+                <span>Kelola bank soal</span>
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/teacher/exams" className="group">
+          <Card className="h-full transition-colors group-hover:border-blue-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Paket Ujian</CardDescription>
+              <ClipboardList className="h-4 w-4 text-blue-700" aria-hidden="true" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">{examsSummary.total}</div>
+              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700">
+                <span>Kelola ujian</span>
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -107,13 +147,13 @@ export default async function TeacherOverviewPage() {
         </Card>
 
         <UpcomingModuleCard
-          title="Bank Soal, Perakitan Ujian & Penilaian"
-          phaseLabel="Segera Hadir — Fase 2"
-          description="Modul pembuatan soal, penjadwalan ujian, pemantauan sesi, dan penilaian akan dibuka pada Fase 2."
+          title="Pelaksanaan Siswa, Pemantauan & Penilaian"
+          phaseLabel="Segera Hadir — Fase 3"
+          description="Bank soal dan penerbitan snapshot ujian telah aktif di Fase 2. Pengerjaan oleh siswa dan pemantauan langsung akan dibuka pada Fase 3."
           plannedCapabilities={[
-            "Pembuatan soal dengan riwayat versi, media, rumus matematika, dan pemisahan kunci jawaban.",
-            "Perakitan paket ujian dengan jadwal, batas waktu otoritatif server, dan versi terpublikasi yang terkunci.",
-            "Pemantauan pelaksanaan ujian dan penilaian esai teraudit.",
+            "Mesin pengerjaan ujian siswa dengan penyimpanan idempoten dan pengatur waktu server.",
+            "Dasbor pengawasan langsung (heartbeat & garis waktu kejadian berbasis bukti).",
+            "Koreksi otomatis objektif, penilaian rubrik esai, dan rilis nilai resmi.",
           ]}
         />
       </div>
