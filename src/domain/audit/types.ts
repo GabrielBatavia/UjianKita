@@ -19,7 +19,23 @@ export type AuditAction =
   | "subject.created"
   | "subject.updated"
   | "school.settings_updated"
-  | "security.unauthorized_access_attempt";
+  | "security.unauthorized_access_attempt"
+  | "question.created"
+  | "question.version_created"
+  | "question.duplicated"
+  | "question.archived"
+  | "question.bulk_imported"
+  | "exam.created"
+  | "exam.updated"
+  | "exam.questions_updated"
+  | "exam.scheduled"
+  | "exam.validated"
+  | "exam.published"
+  | "exam.revision_started"
+  | "exam.closed"
+  | "exam.archived"
+  | "exam.admin_closed"
+  | "exam.admin_archived";
 
 export interface AuditEventInput {
   schoolId: string;

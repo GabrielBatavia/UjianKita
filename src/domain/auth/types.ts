@@ -21,7 +21,13 @@ export type PermissionCode =
   | "subjects.write"
   | "audit.read"
   | "teacher.workspace.access"
-  | "student.portal.access";
+  | "student.portal.access"
+  | "questions.read"
+  | "questions.write"
+  | "exams.read"
+  | "exams.write"
+  | "exams.publish"
+  | "exams.oversight";
 
 export interface AuthenticatedActor {
   userId: string;
