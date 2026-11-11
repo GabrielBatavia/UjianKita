@@ -29,8 +29,8 @@ npm run test
 # 3. Production build check
 npm run build
 
-# 4. Playwright E2E + WCAG checks (requires Chromium browser installed)
-npx playwright install chromium
+# 4. Playwright E2E + WCAG checks (requires Chromium and WebKit browsers installed)
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
