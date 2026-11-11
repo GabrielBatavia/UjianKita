@@ -42,11 +42,42 @@ test.describe("UjianKita Phase 1 Foundation E2E", () => {
 
   test("unauthenticated visits to protected portals fail closed and redirect to /login", async ({
     page,
+    request,
   }) => {
-    for (const protectedRoute of ["/dashboard", "/admin", "/teacher", "/student"]) {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (err) => pageErrors.push(err.message));
+
+    for (const protectedRoute of [
+      "/dashboard",
+      "/admin",
+      "/admin/exams",
+      "/admin/exams/sample-exam-id",
+      "/admin/exams/sample-exam-id/preview",
+      "/teacher",
+      "/teacher/questions",
+      "/teacher/questions/new",
+      "/teacher/questions/import",
+      "/teacher/exams",
+      "/teacher/exams/new",
+      "/teacher/exams/sample-exam-id",
+      "/teacher/exams/sample-exam-id/preview",
+      "/teacher/schedules",
+      "/student",
+    ]) {
       await page.goto(protectedRoute);
       await expect(page).toHaveURL(/\/login/);
     }
+
+    for (const apiRoute of [
+      "/api/teacher/questions",
+      "/api/teacher/exams",
+      "/api/admin/exams",
+    ]) {
+      const res = await request.get(apiRoute);
+      expect([401, 503]).toContain(res.status());
+    }
+
+    expect(pageErrors).toEqual([]);
   });
 
   test("login and forgot-password pages pass automated WCAG 2.2 AA accessibility checks", async ({
