@@ -62,6 +62,12 @@ describe("Authorization policies & RBAC isolation", () => {
     expect(canManageSchoolResource(inactiveAdmin, SCHOOL_A, "students.write")).toBe(false);
     expect(canManageSchoolResource(teacherA, SCHOOL_A, "students.write")).toBe(false);
     expect(hasPermission(["teacher"], "teacher.workspace.access")).toBe(true);
+    expect(hasPermission(["teacher"], "exams.grade")).toBe(true);
+    expect(hasPermission(["teacher"], "exams.results.release")).toBe(true);
+    expect(hasPermission(["student"], "student.exams.read")).toBe(true);
+    expect(hasPermission(["student"], "student.attempts.write")).toBe(true);
+    expect(hasPermission(["student"], "student.results.read")).toBe(true);
+    expect(hasPermission(["student"], "exams.grade")).toBe(false);
     expect(hasPermission(["student"], "audit.read")).toBe(false);
   });
 

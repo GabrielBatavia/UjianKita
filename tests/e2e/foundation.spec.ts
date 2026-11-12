@@ -64,14 +64,17 @@ test.describe("UjianKita Phase 1 Foundation E2E", () => {
       "/teacher/schedules",
       "/student",
     ]) {
-      await page.goto(protectedRoute);
+      await page.goto(protectedRoute, { waitUntil: "domcontentloaded" });
       await expect(page).toHaveURL(/\/login/);
     }
 
     for (const apiRoute of [
       "/api/teacher/questions",
       "/api/teacher/exams",
+      "/api/teacher/grading",
       "/api/admin/exams",
+      "/api/student/exams",
+      "/api/student/results",
     ]) {
       const res = await request.get(apiRoute);
       expect([401, 503]).toContain(res.status());
