@@ -125,6 +125,9 @@ export function ExamWorkspace({
   const [passingScore, setPassingScore] = React.useState(String(initialExam.passing_score));
   const [randomizeQuestions, setRandomizeQuestions] = React.useState(initialExam.randomize_questions);
   const [randomizeOptions, setRandomizeOptions] = React.useState(initialExam.randomize_options);
+  const [resultReleasePolicy, setResultReleasePolicy] = React.useState<
+    "manual" | "after_submit_if_no_essay" | "after_window_close"
+  >(initialExam.result_release_policy ?? "manual");
 
   // Draft question selection state
   const [selectedQuestions, setSelectedQuestions] = React.useState<
@@ -195,6 +198,7 @@ export function ExamWorkspace({
           passingScore: Number(passingScore),
           randomizeQuestions,
           randomizeOptions,
+          resultReleasePolicy,
           startsAt: startsAtLocal ? new Date(startsAtLocal).toISOString() : null,
           endsAt: endsAtLocal ? new Date(endsAtLocal).toISOString() : null,
           versionLock,
@@ -437,6 +441,14 @@ export function ExamWorkspace({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {initialExam.status === "PUBLISHED" || initialExam.status === "CLOSED" ? (
+            <Button asChild size="sm">
+              <Link href={`/teacher/exams/${initialExam.id}/grading`}>
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                <span>Penilaian &amp; Hasil</span>
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline" size="sm">
             <Link href={`/teacher/exams/${initialExam.id}/preview`}>
               <Eye className="h-4 w-4" aria-hidden="true" />
@@ -585,6 +597,31 @@ export function ExamWorkspace({
                     />
                     <span>Acak urutan pilihan jawaban</span>
                   </label>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="ew-release-policy">Kebijakan Rilis Nilai Siswa</Label>
+                  <Select
+                    id="ew-release-policy"
+                    disabled={!editable}
+                    value={resultReleasePolicy}
+                    onChange={(e) =>
+                      setResultReleasePolicy(
+                        e.target.value as
+                          | "manual"
+                          | "after_submit_if_no_essay"
+                          | "after_window_close"
+                      )
+                    }
+                  >
+                    <option value="manual">Manual — Guru merilis hasil secara eksplisit</option>
+                    <option value="after_submit_if_no_essay">
+                      Otomatis setelah kumpul (jika tanpa esai)
+                    </option>
+                    <option value="after_window_close">
+                      Otomatis setelah jendela ujian berakhir
+                    </option>
+                  </Select>
                 </div>
 
                 {editable ? (

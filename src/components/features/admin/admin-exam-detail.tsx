@@ -10,6 +10,7 @@ import type {
   ExamRecord,
   ExamVersionSummary,
 } from "@/domain/exams/phase2-types";
+import type { TeacherGradingAttemptSummary } from "@/domain/exams/phase3-types";
 import { formatDateTimeId } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,69 @@ export function AdminExamDetail({
   const [reason, setReason] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [attempts, setAttempts] = React.useState<TeacherGradingAttemptSummary[]>([]);
+  const [cancelTargetId, setCancelTargetId] = React.useState<string | null>(null);
+  const [cancelReason, setCancelReason] = React.useState("");
+
+  const loadAttempts = React.useCallback(async () => {
+    if (exam.status !== "PUBLISHED" && exam.status !== "CLOSED") return;
+    try {
+      const res = await fetch(`/api/teacher/exams/${exam.id}/attempts`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { attempts: TeacherGradingAttemptSummary[] };
+      setAttempts(data.attempts);
+    } catch {
+      // Ignore silent load errors
+    }
+  }, [exam.id, exam.status]);
+
+  React.useEffect(() => {
+    if (exam.status !== "PUBLISHED" && exam.status !== "CLOSED") return;
+    let cancelled = false;
+    void fetch(`/api/teacher/exams/${exam.id}/attempts`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { attempts: TeacherGradingAttemptSummary[] };
+        if (!cancelled) {
+          setAttempts(data.attempts);
+        }
+      })
+      .catch(() => {
+        // Ignore silent load errors
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [exam.id, exam.status]);
+
+  async function handleCancelAttempt(attemptId: string) {
+    if (cancelReason.trim().length < 5) {
+      setErrorMessage("Alasan pembatalan sesi wajib minimal 5 karakter.");
+      return;
+    }
+    setErrorMessage(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/attempts/${attemptId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setErrorMessage(data.error ?? "Gagal membatalkan sesi ujian.");
+        return;
+      }
+      setCancelTargetId(null);
+      setCancelReason("");
+      await loadAttempts();
+      router.refresh();
+    } catch {
+      setErrorMessage("Gagal menghubungi server.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleAdminAction(targetStatus: "CLOSED" | "ARCHIVED") {
     if (!reason.trim()) {
@@ -194,6 +258,112 @@ export function AdminExamDetail({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pemantauan Sesi Peserta ({attempts.length})</CardTitle>
+          <CardDescription>
+            Status pengerjaan siswa serta pembatalan sesi aktif yang tercatat pada log audit sekolah.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {attempts.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              Belum ada peserta yang memulai sesi ujian ini.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Siswa</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Skor</TableHead>
+                  <TableHead>Bukti</TableHead>
+                  <TableHead className="text-right">Aksi Admin</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attempts.map((att) => (
+                  <TableRow key={att.attemptId}>
+                    <TableCell>
+                      <p className="font-semibold text-slate-900">{att.studentName}</p>
+                      <p className="text-xs text-slate-500">
+                        {att.className} {att.studentNis ? `• ${att.studentNis}` : ""} • #
+                        {att.attemptNumber}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          att.status === "SUBMITTED"
+                            ? "success"
+                            : att.status === "CANCELLED_BY_ADMIN"
+                              ? "danger"
+                              : "warning"
+                        }
+                      >
+                        {att.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {att.totalScore !== null ? `${att.percentageScore?.toFixed(1)}%` : "-"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{att.receiptCode ?? "-"}</TableCell>
+                    <TableCell className="text-right">
+                      {att.status === "IN_PROGRESS" || att.status === "SUBMITTING" ? (
+                        cancelTargetId === att.attemptId ? (
+                          <div className="flex flex-col items-end gap-2">
+                            <Textarea
+                              rows={2}
+                              placeholder="Alasan pembatalan sesi (min. 5 karakter)..."
+                              value={cancelReason}
+                              onChange={(e) => setCancelReason(e.target.value)}
+                              className="max-w-xs text-xs"
+                            />
+                            <div className="flex gap-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCancelTargetId(null);
+                                  setCancelReason("");
+                                }}
+                              >
+                                Batal
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                disabled={busy}
+                                onClick={() => void handleCancelAttempt(att.attemptId)}
+                              >
+                                Konfirmasi Batalkan
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCancelTargetId(att.attemptId)}
+                          >
+                            Batalkan Sesi
+                          </Button>
+                        )
+                      ) : (
+                        <span className="text-xs text-slate-400">Final</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

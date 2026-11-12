@@ -37,6 +37,9 @@ export function ExamCreateForm({
   const [passingScore, setPassingScore] = React.useState("70");
   const [randomizeQuestions, setRandomizeQuestions] = React.useState(true);
   const [randomizeOptions, setRandomizeOptions] = React.useState(true);
+  const [resultReleasePolicy, setResultReleasePolicy] = React.useState<
+    "manual" | "after_submit_if_no_essay" | "after_window_close"
+  >("manual");
   const [selectedClassIds, setSelectedClassIds] = React.useState<string[]>([]);
   const [startsAtLocal, setStartsAtLocal] = React.useState("");
   const [endsAtLocal, setEndsAtLocal] = React.useState("");
@@ -78,6 +81,7 @@ export function ExamCreateForm({
           passingScore: Number(passingScore),
           randomizeQuestions,
           randomizeOptions,
+          resultReleasePolicy,
           startsAt,
           endsAt,
           classIds: selectedClassIds,
@@ -267,6 +271,27 @@ export function ExamCreateForm({
                 />
                 <span>Acak urutan pilihan jawaban (kecuali soal yang dikunci)</span>
               </label>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="ex-release-policy">Kebijakan Rilis Nilai Siswa</Label>
+              <Select
+                id="ex-release-policy"
+                value={resultReleasePolicy}
+                onChange={(e) =>
+                  setResultReleasePolicy(
+                    e.target.value as "manual" | "after_submit_if_no_essay" | "after_window_close"
+                  )
+                }
+              >
+                <option value="manual">Manual — Guru merilis hasil secara eksplisit</option>
+                <option value="after_submit_if_no_essay">
+                  Otomatis setelah kumpul (jika tanpa esai)
+                </option>
+                <option value="after_window_close">
+                  Otomatis setelah jendela ujian kelas berakhir
+                </option>
+              </Select>
             </div>
           </CardContent>
         </Card>

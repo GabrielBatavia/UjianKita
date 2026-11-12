@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BookOpen,
   CalendarClock,
+  CheckSquare,
   ClipboardList,
   Database,
   Eye,
@@ -45,6 +46,7 @@ export type NavIconName =
   | "importQuestions"
   | "newExam"
   | "schedules"
+  | "grading"
   | "oversight"
   | "preview";
 
@@ -70,6 +72,7 @@ const ICON_MAP: Record<NavIconName, React.ComponentType<{ className?: string }>>
   importQuestions: FileSpreadsheet,
   newExam: PlusCircle,
   schedules: CalendarClock,
+  grading: CheckSquare,
   oversight: ShieldAlert,
   preview: Eye,
 };
@@ -104,14 +107,15 @@ export function getNavItemsForRole(role: Phase1RoleCode): PortalNavItem[] {
       { href: "/teacher/exams", label: "Manajemen Ujian", icon: "exams" },
       { href: "/teacher/exams/new", label: "Buat Ujian", icon: "newExam" },
       { href: "/teacher/schedules", label: "Jadwal Ujian", icon: "schedules" },
+      { href: "/teacher/grading", label: "Penilaian & Hasil", icon: "grading" },
     ];
   }
 
   return [
     { href: "/student", label: "Beranda", icon: "dashboard" },
-    { href: "/student/exams", label: "Jadwal Ujian", icon: "exams", badge: "Fase 3" },
-    { href: "/student/history", label: "Riwayat Ujian", icon: "history", badge: "Fase 3" },
-    { href: "/student/profile", label: "Profil Saya", icon: "profile" },
+    { href: "/student/exams", label: "Ujian", icon: "exams" },
+    { href: "/student/results", label: "Hasil & Bukti", icon: "history" },
+    { href: "/student/profile", label: "Profil", icon: "profile" },
   ];
 }
 
@@ -148,11 +152,58 @@ export function PortalShell({
     if (href === "/teacher/exams") {
       return (
         pathname === href ||
-        (pathname.startsWith("/teacher/exams/") && !pathname.startsWith("/teacher/exams/new"))
+        (pathname.startsWith("/teacher/exams/") &&
+          !pathname.startsWith("/teacher/exams/new") &&
+          !pathname.endsWith("/grading"))
+      );
+    }
+    if (href === "/teacher/grading") {
+      return (
+        pathname === href ||
+        pathname.startsWith("/teacher/grading") ||
+        pathname.startsWith("/teacher/results") ||
+        pathname.startsWith("/teacher/attempts/") ||
+        (pathname.startsWith("/teacher/exams/") && pathname.endsWith("/grading"))
+      );
+    }
+    if (href === "/student/results") {
+      return (
+        pathname === href ||
+        pathname.startsWith("/student/results") ||
+        pathname.startsWith("/student/history") ||
+        (pathname.startsWith("/student/attempts/") && pathname.endsWith("/receipt"))
+      );
+    }
+    if (href === "/student/exams") {
+      return (
+        pathname === href ||
+        pathname.startsWith("/student/exams/") ||
+        (pathname.startsWith("/student/attempts/") && !pathname.endsWith("/receipt"))
       );
     }
     return pathname === href || pathname.startsWith(`${href}/`);
   };
+
+  const isFocusExamSession =
+    actor.primaryRole === "student" &&
+    pathname.startsWith("/student/attempts/") &&
+    !pathname.endsWith("/receipt");
+
+  if (isFocusExamSession) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-blue-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Langsung ke konten ujian
+        </a>
+        <main id="main-content" className="min-h-screen">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
