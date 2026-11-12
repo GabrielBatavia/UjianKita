@@ -27,18 +27,17 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
 
 ---
 
-## Phase 3 — Exam Delivery Engine, Exam Browser Integration, Grading & Live Monitoring (Upcoming)
+## Phase 3 — Student Examination Engine & Grading (Implemented; Live PostgreSQL & Device Verification Pending)
 
 - **Scope:**
-  - Authoritative student attempt engine:
-    - Idempotent answer autosave API with monotonic revision checking (`evaluateRevisionWrite`) and PostgreSQL commit acknowledgments.
-    - Explicit UI sync states (`Menyimpan...`, `Jawaban tersimpan`, `Koneksi terputus — X jawaban tertunda`, `Menyambung ulang...`).
-    - Recovery after page reload / phone restart and deterministic deadline handling.
-    - Transactional final submission with atomic `SubmissionReceipt`.
-  - Objective server-side grading, teacher essay rubric grading, and audited grade adjustment workflow (`reason` + approver).
-  - Real-device Android **ExamBro** evaluation & **Safe Exam Browser (SEB)** iOS ConfigKey/BrowserExamKey verification.
-  - Live examination monitoring dashboard for teachers/proctors and activation of `exam_coordinator`, `proctor`, and `auditor` roles.
-- **Exit Evidence:** Concurrency/race-condition test suite, grading accuracy fixture suite, real-device ExamBro & SEB launch/lockdown/recovery E2E evidence.
+  - Authoritative student attempt engine (`/student/exams`, `/student/exams/[examId]/instructions`, `/student/attempts/[attemptId]`, `/review`, `/receipt`, `/student/results`):
+    - Idempotent `start_or_resume_exam_attempt` RPC with `idx_exam_attempts_single_active` concurrency guard and deterministic shuffled realization (`attempt_question_assignments`).
+    - Idempotent answer autosave API (`PUT /answers` -> `save_attempt_answer_atomic`) with monotonic revision checks, option-key translation, and IndexedDB pending recovery queue (`src/lib/exam-storage.ts`).
+    - Explicit UI sync states (`Menyimpan...`, `Tersimpan`, `Menunggu koneksi`, `Sinkronisasi diperlukan`, `Gagal menyimpan`) backed strictly by PostgreSQL acknowledgments.
+    - Dedicated review checklist (`/review`) separated from question navigation, transactional finalization (`_finalize_attempt_internal`), and immutable `SubmissionReceipt`.
+  - Objective server-side grading (`_compute_and_upsert_exam_grade`), teacher manual essay grading workspace (`/teacher/grading`, `/teacher/exams/[id]/grading`), audited post-grading score adjustments (`grade_adjustments`), configurable result release policies (`manual`, `after_submit_if_no_essay`, `after_window_close`), and admin audited attempt cancellation (`cancel_exam_attempt_by_admin`).
+  - Reproducible 100-student load test harness (`scripts/load-test-exam-engine.ts`).
+- **Remaining / Live Verification Needed:** Real PostgreSQL execution of `000006`–`000007` RPCs and RLS suites, real-device Android **ExamBro** & **Safe Exam Browser (SEB)** iOS ConfigKey/BrowserExamKey enforcement verification, live proctor room coordination (`exam_coordinator`, `proctor`, `auditor`), and executing the isolated load test benchmark.
 
 ---
 
