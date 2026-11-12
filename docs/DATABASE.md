@@ -15,6 +15,8 @@ UjianKita uses Supabase PostgreSQL with Row Level Security (RLS), tenant-scoped 
 | `20261112000005_phase2_rls_and_publish_rpc.sql` | Phase 2 immutability triggers (`prevent_immutable_snapshot_mutation`, `guard_draft_exam_question_edits`), ownership helpers, RLS policies, and atomic RPCs | Pending live PostgreSQL apply |
 | `20261112000006_phase3_attempt_and_grading_schema.sql` | Phase 3 exam result-release columns on `exams`, 5 Phase 3 RBAC permissions, `exam_attempts` (`idx_exam_attempts_single_active`), `attempt_question_assignments`, `student_answers`, `answer_revisions`, `answer_save_requests`, `exam_submissions`, `submission_receipts`, `exam_grades`, `manual_grading_entries`, `grade_adjustments`, and `attempt_events` | Pending live PostgreSQL apply |
 | `20261112000007_phase3_rls_and_attempt_rpcs.sql` | Phase 3 immutability triggers, student read isolation RLS policies (`exams_student_select`, `auth_student_can_access_exam`, `auth_teacher_can_grade_attempt`, released `exam_grades`), and atomic attempt/save/submit/grading/release/cancel RPCs | Pending live PostgreSQL apply |
+| `20261112000008_phase4_security_monitoring_schema.sql` | Phase 4 monitoring RBAC permissions (`monitoring.*`), `exam_security_policies`, `exam_security_policy_versions`, `secure_browser_configs`, `attempt_monitoring_presence`, `exam_security_incidents`, `exam_security_incident_events`, `incident_review_actions`, `monitoring_audit_events`, and `exam_student_browser_overrides` | Pending live PostgreSQL apply |
+| `20261112000009_phase4_rls_and_monitoring_rpcs.sql` | Phase 4 RLS isolation (`attempt_events` tightening, zero student SEB secret access), publish-time `trg_snapshot_security_policy_on_publish`, atomic heartbeat/telemetry/incident/override/retention RPCs, and Supabase Realtime publication helpers | Pending live PostgreSQL apply |
 
 ---
 
@@ -87,12 +89,32 @@ UjianKita uses Supabase PostgreSQL with Row Level Security (RLS), tenant-scoped 
 - `public.cancel_exam_attempt_by_admin(p_attempt_id, p_reason)`
 - `public.get_student_published_question_counts(p_exam_version_ids)`
 
-*(Dedicated Phase 4 proctoring/security-incident tables such as `security_incidents` remain deferred until ExamBro/SEB device verification.)*
+---
+
+## 6. Phase 4 Security, Monitoring & Secure Browser Tables & RPCs (`000008` & `000009`)
+
+### Policies, Browser Secrets & Monitoring Presence Tables (`000008`)
+- `exam_security_policies` and publish-frozen `exam_security_policy_versions` (snapshotted automatically via `trg_snapshot_security_policy_on_publish` on `exam_versions` insert).
+- `secure_browser_configs` (`config_key_hash`, `browser_exam_key_hashes`, raw `.seb` XML payload) — **zero student RLS policies; read strictly via server-side policy reader**.
+- `attempt_monitoring_presence` — compact single row per active/completed attempt storing `last_heartbeat_at_utc`, `presence_state`, `browser_trust_level`, counter summaries (`visibility_hidden_count`, `reload_count`, `connection_gap_count`, `copy_paste_count`, `context_menu_count`), and `highest_severity`.
+- `exam_security_incidents`, `exam_security_incident_events`, and `incident_review_actions` — deduplicated review cases (`(attempt_id, reason_code)`), chronological incident event links, and append-only reviewer transitions (`NEW -> UNDER_REVIEW -> ACKNOWLEDGED -> RESOLVED | DISMISSED`).
+- `monitoring_audit_events` and `exam_student_browser_overrides` — immutable monitoring audit log (`trg_monitoring_audit_events_immutable`) and audited emergency proctor bypass records per `(exam_id, student_id)`.
+- Tightened `attempt_events` constraints (`client_event_id` deduplication index and server-enforced `event_source` validation inside `record_monitoring_events_batch_atomic`).
+
+### Transactional PL/pgSQL RPCs (`000009`)
+- `public.auth_can_monitor_exam(p_exam_id)`
+- `public.record_attempt_heartbeat_atomic(...)`
+- `public.record_monitoring_events_batch_atomic(...)`
+- `public.verify_attempt_seb_handshake_atomic(...)`
+- `public.transition_security_incident_atomic(...)`
+- `public.grant_attempt_browser_override_atomic(...)`
+- `public.purge_expired_monitoring_records_atomic(...)`
 
 ---
 
-## 6. Migration Rollback Caveats
+## 7. Migration Rollback Caveats
 
+- Dropping Phase 4 tables (`20261112000008` / `20261112000009`) removes security policies, SEB key hashes, monitoring presence rows, incidents, incident review logs, and emergency browser overrides.
 - Dropping Phase 3 tables (`20261112000006` / `20261112000007`) permanently deletes student attempts, answers, receipts, grades, and audit telemetry.
 - Dropping Phase 2 tables (`20261112000004` / `20261112000005`) deletes authored questions, answer keys, draft exams, schedules, and immutable published exam versions; back up PostgreSQL before running any destructive down-migration in populated environments.
 - Dropping `20261112000003` removes cross-school trigger guards (`enforce_same_school_*`); do not remove in multi-school deployments without replacement constraints.

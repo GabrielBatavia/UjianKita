@@ -4,9 +4,11 @@ import {
   noStoreJson,
   parseJsonBody,
 } from "@/lib/api-helpers";
+import { getPolicyReaderClient } from "@/lib/supabase/policy-reader";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordStudentTelemetryEventService } from "@/services/attempt-service";
 import { requireRoleActor } from "@/services/auth-service";
+import { recordMonitoringEventsBatchService } from "@/services/monitoring-service";
 
 export async function POST(
   request: Request,
@@ -24,8 +26,32 @@ export async function POST(
     if (limited) return limited;
 
     const supabase = await createSupabaseServerClient();
+    const policyReader = getPolicyReaderClient(supabase);
     const body = await parseJsonBody(request);
-    const result = await recordStudentTelemetryEventService(supabase, actor, attemptId, body);
+
+    if (
+      body &&
+      typeof body === "object" &&
+      "events" in body &&
+      Array.isArray((body as { events: unknown }).events)
+    ) {
+      const batchResult = await recordMonitoringEventsBatchService(
+        supabase,
+        policyReader,
+        actor,
+        attemptId,
+        body
+      );
+      return noStoreJson(batchResult, 201);
+    }
+
+    const result = await recordStudentTelemetryEventService(
+      supabase,
+      actor,
+      attemptId,
+      body,
+      policyReader
+    );
     return noStoreJson(result, 201);
   } catch (error) {
     return handleApiError(error);

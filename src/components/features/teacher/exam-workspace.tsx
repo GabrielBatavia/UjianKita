@@ -34,6 +34,9 @@ import {
   type ScheduleConflictWarning,
 } from "@/domain/exams/exam-lifecycle";
 import { formatDateTimeId } from "@/lib/utils";
+import type { ExamSecurityPolicyRecord } from "@/domain/monitoring/phase4-types";
+import { createDefaultSecurityPolicy } from "@/domain/monitoring/phase4-types";
+import { ExamSecurityPolicyPanel } from "@/components/features/monitoring/exam-security-policy-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,6 +86,7 @@ export function ExamWorkspace({
   authorizedClasses,
   academicYears,
   timeZone,
+  initialSecurityPolicy = null,
 }: {
   initialExam: ExamRecord;
   initialDraftQuestions: ExamDraftQuestionItem[];
@@ -96,6 +100,7 @@ export function ExamWorkspace({
   authorizedClasses: Array<{ id: string; name: string; grade_level: string; academic_year_id: string }>;
   academicYears: AcademicYearRecord[];
   timeZone: string;
+  initialSecurityPolicy?: ExamSecurityPolicyRecord | null;
 }) {
   const router = useRouter();
   const editable = isExamEditable(initialExam.status);
@@ -477,6 +482,7 @@ export function ExamWorkspace({
           <TabsTrigger value="history">
             5. Riwayat Versi ({initialPublishedVersions.length})
           </TabsTrigger>
+          <TabsTrigger value="security">6. Keamanan &amp; SEB</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Config */}
@@ -1103,6 +1109,20 @@ export function ExamWorkspace({
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Tab 6: Security & Browser Policy */}
+        <TabsContent value="security" className="space-y-5">
+          <ExamSecurityPolicyPanel
+            examId={initialExam.id}
+            initialPolicy={
+              initialSecurityPolicy ??
+              createDefaultSecurityPolicy({
+                examId: initialExam.id,
+                schoolId: initialExam.school_id,
+              })
+            }
+          />
         </TabsContent>
       </Tabs>
 

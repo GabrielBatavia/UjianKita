@@ -6,6 +6,7 @@ import { fetchPaginatedQuestions } from "@/repositories/question-bank-repository
 import { requireRoleActor } from "@/services/auth-service";
 import { isServiceError } from "@/services/errors";
 import { getExamDetailService } from "@/services/exam-service";
+import { getExamSecurityPolicyService } from "@/services/monitoring-service";
 import { PageHeader } from "@/components/layout/page-header";
 import { ExamWorkspace } from "@/components/features/teacher/exam-workspace";
 
@@ -27,9 +28,11 @@ export default async function TeacherExamDetailPage({
   let detail: Awaited<ReturnType<typeof getExamDetailService>>;
   let bankRes: Awaited<ReturnType<typeof fetchPaginatedQuestions>>;
   let academicYears: Awaited<ReturnType<typeof fetchAcademicYears>>;
+  let initialSecurityPolicy: Awaited<ReturnType<typeof getExamSecurityPolicyService>> | null =
+    null;
   try {
     detail = await getExamDetailService(supabase, actor, id);
-    [bankRes, academicYears] = await Promise.all([
+    [bankRes, academicYears, initialSecurityPolicy] = await Promise.all([
       fetchPaginatedQuestions(supabase, {
         schoolId: actor.schoolId,
         subjectId: detail.exam.subject_id,
@@ -38,6 +41,7 @@ export default async function TeacherExamDetailPage({
         pageSize: 100,
       }),
       fetchAcademicYears(supabase, actor.schoolId),
+      getExamSecurityPolicyService(supabase, actor, id).catch(() => null),
     ]);
   } catch (err) {
     if (isServiceError(err) && err.statusCode === 404) {
@@ -65,6 +69,7 @@ export default async function TeacherExamDetailPage({
         authorizedClasses={detail.authorizedClasses}
         academicYears={academicYears}
         timeZone={actor.timezone}
+        initialSecurityPolicy={initialSecurityPolicy}
       />
     </div>
   );

@@ -30,6 +30,11 @@ import type {
   StudentAttemptWorkspacePayload,
   StudentResponsePayload,
 } from "@/domain/exams/phase3-types";
+import type {
+  MonitoringEventType,
+  StudentSecurityPolicyView,
+} from "@/domain/monitoring/phase4-types";
+import { StudentExamWatermark } from "@/components/features/student/student-exam-watermark";
 import {
   clearAttemptPendingDrafts,
   computeClientPayloadHash,
@@ -71,11 +76,16 @@ function hasFilledAnswer(response: StudentResponsePayload | null): boolean {
 
 export function ExamPlayerClient({
   initialWorkspace,
+  securityPolicy = null,
+  studentDisplayName = "Peserta Ujian",
 }: {
   initialWorkspace: StudentAttemptWorkspacePayload;
+  securityPolicy?: StudentSecurityPolicyView | null;
+  studentDisplayName?: string;
 }) {
   const router = useRouter();
   const attemptId = initialWorkspace.attempt.id;
+  const [focusNoticeCount, setFocusNoticeCount] = React.useState(0);
 
   const [questions, setQuestions] = React.useState<AttemptQuestionStudentView[]>(
     initialWorkspace.questions
@@ -113,6 +123,15 @@ export function ExamPlayerClient({
   const essayDebounceRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const flushingRef = React.useRef(false);
   const lastVisibilityEventAtRef = React.useRef(0);
+  const hiddenStartedAtRef = React.useRef<number | null>(null);
+  const monitoringQueueRef = React.useRef<
+    Array<{
+      clientEventId: string;
+      eventType: MonitoringEventType;
+      occurredAt: string;
+      metadata: Record<string, unknown>;
+    }>
+  >([]);
 
   // Initialize monotonic revision map cleanly
   React.useEffect(() => {
@@ -382,23 +401,171 @@ export function ExamPlayerClient({
     return () => clearInterval(tick);
   }, [attemptStatus, deadlineMs, syncServerClock]);
 
-  // Unobtrusive visibility telemetry logging (throttled to avoid noisy bursts)
+  const flushMonitoringQueue = React.useCallback(
+    async (useBeacon = false) => {
+      if (monitoringQueueRef.current.length === 0) return;
+      const batch = monitoringQueueRef.current.splice(0, 25);
+      const url = `/api/student/attempts/${attemptId}/events`;
+      const bodyStr = JSON.stringify({ events: batch });
+
+      if (useBeacon && typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+        try {
+          const blob = new Blob([bodyStr], { type: "application/json" });
+          if (navigator.sendBeacon(url, blob)) {
+            return;
+          }
+        } catch {
+          // Fall through to keepalive fetch
+        }
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: bodyStr,
+          keepalive: useBeacon,
+        });
+        if (!res.ok) {
+          // Non-blocking: requeue up to 25 newest events if transient server failure
+          monitoringQueueRef.current = [...batch, ...monitoringQueueRef.current].slice(0, 25);
+        }
+      } catch {
+        monitoringQueueRef.current = [...batch, ...monitoringQueueRef.current].slice(0, 25);
+      }
+    },
+    [attemptId]
+  );
+
+  const enqueueMonitoringEvent = React.useCallback(
+    (eventType: MonitoringEventType, metadata: Record<string, unknown> = {}) => {
+      if (attemptStatus !== "IN_PROGRESS") return;
+      monitoringQueueRef.current = [
+        ...monitoringQueueRef.current.slice(-24),
+        {
+          clientEventId: generateClientUuid(),
+          eventType,
+          occurredAt: new Date().toISOString(),
+          metadata,
+        },
+      ];
+      if (monitoringQueueRef.current.length >= 5) {
+        void flushMonitoringQueue(false);
+      }
+    },
+    [attemptStatus, flushMonitoringQueue]
+  );
+
+  // Jittered ~30s connection heartbeat + periodic monitoring flush + reload detection
+  React.useEffect(() => {
+    if (attemptStatus !== "IN_PROGRESS") return;
+
+    // Reload recovery detection via sessionStorage
+    try {
+      const seenKey = `ujk:attempt-seen:${attemptId}`;
+      if (window.sessionStorage.getItem(seenKey)) {
+        enqueueMonitoringEvent("EXAM_PAGE_RELOADED", { ts: Date.now() });
+      }
+      window.sessionStorage.setItem(seenKey, "1");
+    } catch {
+      // ignore storage errors
+    }
+
+    const sendHeartbeat = () => {
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+      const isExamBro = ua.includes("exambro") || ua.includes("dekikurnia");
+      const isSeb =
+        typeof window !== "undefined" && Boolean((window as { SafeExamBrowser?: unknown }).SafeExamBrowser);
+      void fetch(`/api/student/attempts/${attemptId}/heartbeat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visible: typeof document !== "undefined" ? !document.hidden : true,
+          online: typeof navigator !== "undefined" ? navigator.onLine : true,
+          queuedAnswerCount: Object.keys(pendingDraftsRef.current).length,
+          browserPlatformHint: isSeb
+            ? "IOS_SAFE_EXAM_BROWSER"
+            : isExamBro
+              ? "ANDROID_EXAMBRO"
+              : "STANDARD_WEB",
+          exambroHint: isExamBro,
+          clientTimestamp: new Date().toISOString(),
+        }),
+      }).catch(() => {});
+    };
+
+    const baseIntervalMs = (securityPolicy?.heartbeatIntervalSeconds ?? 30) * 1000;
+    const jitterMs = Math.floor(Math.random() * 4000) - 2000;
+    const heartbeatMs = Math.max(15_000, baseIntervalMs + jitterMs);
+
+    const initTimeout = window.setTimeout(sendHeartbeat, 400);
+    const heartbeatTimer = window.setInterval(sendHeartbeat, heartbeatMs);
+    const flushTimer = window.setInterval(() => {
+      void flushMonitoringQueue(false);
+    }, 8_000);
+
+    const onPageHide = () => {
+      void flushMonitoringQueue(true);
+    };
+    window.addEventListener("pagehide", onPageHide);
+
+    return () => {
+      window.clearTimeout(initTimeout);
+      window.clearInterval(heartbeatTimer);
+      window.clearInterval(flushTimer);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [attemptId, attemptStatus, enqueueMonitoringEvent, flushMonitoringQueue, securityPolicy?.heartbeatIntervalSeconds]);
+
+  // Unobtrusive visibility telemetry logging (batched, deduplicated, zero blocking)
   React.useEffect(() => {
     if (attemptStatus !== "IN_PROGRESS") return;
     const onVisibilityChange = () => {
       const now = Date.now();
-      if (now - lastVisibilityEventAtRef.current < 3000) return;
-      lastVisibilityEventAtRef.current = now;
-      const eventType = document.hidden ? "PAGE_HIDDEN" : "PAGE_VISIBLE";
-      void fetch(`/api/student/attempts/${attemptId}/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventType, metadata: { ts: now } }),
-      }).catch(() => {});
+      if (document.hidden) {
+        hiddenStartedAtRef.current = now;
+        if (now - lastVisibilityEventAtRef.current < 2000) return;
+        lastVisibilityEventAtRef.current = now;
+        enqueueMonitoringEvent("EXAM_PAGE_HIDDEN", { ts: now });
+        setFocusNoticeCount((c) => c + 1);
+      } else {
+        const hiddenDurationSeconds = hiddenStartedAtRef.current
+          ? Math.max(0, Math.round((now - hiddenStartedAtRef.current) / 1000))
+          : 0;
+        hiddenStartedAtRef.current = null;
+        lastVisibilityEventAtRef.current = now;
+        enqueueMonitoringEvent("EXAM_PAGE_VISIBLE", {
+          ts: now,
+          hiddenDurationSeconds,
+        });
+      }
+      void flushMonitoringQueue(false);
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [attemptId, attemptStatus]);
+  }, [attemptStatus, enqueueMonitoringEvent, flushMonitoringQueue]);
+
+  const copyGuardEnabled = securityPolicy?.copyPasteGuardEnabled ?? true;
+  const contextGuardEnabled = securityPolicy?.contextMenuGuardEnabled ?? true;
+
+  const handlePromptCopy = React.useCallback(
+    (e: React.ClipboardEvent) => {
+      if (!copyGuardEnabled) return;
+      e.preventDefault();
+      enqueueMonitoringEvent("COPY_EVENT_OBSERVED", { scope: "question_prompt" });
+      setFocusNoticeCount((c) => c + 1);
+    },
+    [copyGuardEnabled, enqueueMonitoringEvent]
+  );
+
+  const handlePromptContextMenu = React.useCallback(
+    (e: React.MouseEvent) => {
+      if (!contextGuardEnabled) return;
+      e.preventDefault();
+      enqueueMonitoringEvent("CONTEXT_MENU_EVENT_OBSERVED", { scope: "question_prompt" });
+    },
+    [contextGuardEnabled, enqueueMonitoringEvent]
+  );
 
   const queueAndPersistAnswer = React.useCallback(
     async (
@@ -606,7 +773,13 @@ export function ExamPlayerClient({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 lg:pb-8">
+    <div className="relative min-h-screen bg-slate-50 pb-20 lg:pb-8">
+      <StudentExamWatermark
+        enabled={securityPolicy?.watermarkEnabled ?? true}
+        opacity={securityPolicy?.watermarkOpacity ?? 0.08}
+        studentName={studentDisplayName}
+        attemptId={attemptId}
+      />
       {/* Sticky Focused Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-6">
@@ -729,6 +902,14 @@ export function ExamPlayerClient({
               </div>
             </Alert>
           ) : null}
+
+          {focusNoticeCount > 0 ? (
+            <Alert variant="info" title="Catatan Pemantauan Sesi">
+              Perpindahan fokus tab atau aktivitas salin pada area soal tercatat sebagai informasi
+              teknis sesi untuk pengawas ({focusNoticeCount} kejadian), tanpa menghentikan pengisian
+              atau pengumpulan ujian Anda.
+            </Alert>
+          ) : null}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -776,7 +957,12 @@ export function ExamPlayerClient({
                 </CardHeader>
 
                 <CardContent className="space-y-6 pt-5">
-                  <div className="text-base text-slate-900">
+                  <div
+                    data-exam-prompt="true"
+                    onCopy={handlePromptCopy}
+                    onContextMenu={handlePromptContextMenu}
+                    className={`text-base text-slate-900 ${copyGuardEnabled ? "select-none" : ""}`}
+                  >
                     <QuestionContentRenderer content={activeQuestion.stem} />
                   </div>
 

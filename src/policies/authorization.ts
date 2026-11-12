@@ -26,6 +26,11 @@ const ROLE_PERMISSIONS_MAP: Readonly<Record<RoleCode, readonly PermissionCode[]>
     "exams.oversight",
     "exams.grade",
     "exams.results.release",
+    "monitoring.read",
+    "monitoring.incidents.write",
+    "monitoring.policies.write",
+    "monitoring.oversight",
+    "monitoring.reports.export",
   ],
   teacher: [
     "classes.read",
@@ -39,6 +44,10 @@ const ROLE_PERMISSIONS_MAP: Readonly<Record<RoleCode, readonly PermissionCode[]>
     "exams.publish",
     "exams.grade",
     "exams.results.release",
+    "monitoring.read",
+    "monitoring.incidents.write",
+    "monitoring.policies.write",
+    "monitoring.reports.export",
   ],
   student: [
     "student.portal.access",
@@ -46,9 +55,23 @@ const ROLE_PERMISSIONS_MAP: Readonly<Record<RoleCode, readonly PermissionCode[]>
     "student.attempts.write",
     "student.results.read",
   ],
-  exam_coordinator: ["classes.read", "subjects.read", "teacher.workspace.access"],
-  proctor: ["classes.read"],
-  auditor: ["audit.read"],
+  exam_coordinator: [
+    "classes.read",
+    "subjects.read",
+    "teacher.workspace.access",
+    "monitoring.read",
+    "monitoring.incidents.write",
+    "monitoring.policies.write",
+    "monitoring.oversight",
+    "monitoring.reports.export",
+  ],
+  proctor: ["classes.read", "monitoring.read", "monitoring.incidents.write"],
+  auditor: [
+    "audit.read",
+    "monitoring.read",
+    "monitoring.oversight",
+    "monitoring.reports.export",
+  ],
 };
 
 export function hasRole(roles: readonly RoleCode[], target: RoleCode): boolean {

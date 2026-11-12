@@ -92,6 +92,7 @@ export function getNavItemsForRole(role: Phase1RoleCode): PortalNavItem[] {
       { href: "/admin/classes", label: "Kelas & Tahun Ajaran", icon: "classes" },
       { href: "/admin/subjects", label: "Mata Pelajaran", icon: "subjects" },
       { href: "/admin/exams", label: "Pengawasan Ujian", icon: "oversight" },
+      { href: "/admin/monitoring", label: "Pusat Keamanan", icon: "oversight" },
       { href: "/admin/settings", label: "Pengaturan & Audit", icon: "settings" },
     ];
   }
@@ -107,6 +108,7 @@ export function getNavItemsForRole(role: Phase1RoleCode): PortalNavItem[] {
       { href: "/teacher/exams", label: "Manajemen Ujian", icon: "exams" },
       { href: "/teacher/exams/new", label: "Buat Ujian", icon: "newExam" },
       { href: "/teacher/schedules", label: "Jadwal Ujian", icon: "schedules" },
+      { href: "/teacher/monitoring", label: "Pemantauan Ujian", icon: "oversight" },
       { href: "/teacher/grading", label: "Penilaian & Hasil", icon: "grading" },
     ];
   }

@@ -41,10 +41,21 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
 
 ---
 
-## Phase 4 — Operations, Load Testing, Pilot & High-Stakes Launch
+## Phase 4 — Examination Security, Browser Integration & Real-Time Monitoring (Implemented; Live DB, Realtime & Hardware Verification Pending)
 
 - **Scope:**
-  - Centralized rate limiting and observability (structured logs, error tracking, metrics).
-  - Capacity and burst stress testing (target: simulate at least 2x expected ~100 concurrent candidates = 200+ concurrent virtual students performing login bursts, autosaves, and simultaneous final submissions).
-  - Backup restoration drills (PostgreSQL WAL/PITR verification on Supabase Pro or dedicated PostgreSQL).
-  - Low-stakes controlled school pilot and formal Go / No-Go release checklist sign-off before official school examinations.
+  - Real-time Teacher & Admin Control Center (`/teacher/monitoring`, `/teacher/monitoring/[examId]`, `/students/[attemptId]`, `/incidents`, `/admin/monitoring`, `/admin/monitoring/[examId]`) backed by Supabase Realtime subscriptions + 15-second polling fallback and school-isolated oversight.
+  - Jittered ~30-second student presence heartbeats (`attempt_monitoring_presence`), server-inferred `CONNECTION_GAP_OBSERVED`, and bounded/deduplicated `attempt_events` batching (`record_monitoring_events_batch_atomic`, max 25 events/batch, <= 2KB metadata, server-enforced `event_source`).
+  - Publish-snapshotted configurable security policies (`exam_security_policies` -> `exam_security_policy_versions`), Android ExamBro (`com.dekikurnia.exambro`) scannable SVG QR & honest `unverified_client_hint` classification, and official Safe Exam Browser (SEB) ConfigKey (`SEB-JSON` SHA-256) + Request Hash (`SHA-256(normalizedUrl + keyHex)`) verification, `.seb` profile downloads, `sebs://` deep links, and audited emergency proctor overrides (`exam_student_browser_overrides`).
+  - Non-accusatory deduplicated incident workflow (`NEW -> UNDER_REVIEW -> ACKNOWLEDGED -> RESOLVED | DISMISSED`) with zero automatic penalties, prompt-only watermark/copy/context guards, formula-safe CSV monitoring export with mandatory disclaimer, privacy disclosures (`docs/EXAM_MONITORING_PRIVACY.md`), and Admin telemetry retention purge.
+  - SQL migrations `000008`–`000009` and 100-student monitoring load harness (`scripts/load-test-monitoring.ts`).
+- **Remaining / Live Verification Needed:** Live PostgreSQL apply & RLS/RPC verification across `000001`–`000009`, live Supabase Realtime WebSocket delivery under tenant load, physical Android ExamBro & iOS/macOS SEB handshake testing, and staging 100+ student load benchmarks.
+
+---
+
+## Phase 5 — Distributed Operations, Live Load Drills, Pilot & High-Stakes Launch
+
+- **Scope:**
+  - Centralized distributed rate limiting (Upstash/Redis) and structured observability ahead of multi-instance scaling.
+  - Capacity and burst stress testing against live staging (200+ concurrent virtual students across login, heartbeats, telemetry batches, autosaves, and simultaneous submissions).
+  - Live PostgreSQL backup/PITR restoration drills, controlled school pilot with real ExamBro/SEB hardware, MFA enforcement for staff, and formal Go / No-Go release sign-off before official school examinations.
