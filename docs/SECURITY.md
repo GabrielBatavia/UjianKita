@@ -20,9 +20,10 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 - **Tenant & ownership boundaries:**
   - `schools`, `academic_years`, `classes`, `subjects`, `students`, `teachers`, `audit_events`, `question_banks`, `questions`, `question_versions`, `question_options`, `question_answer_keys`, `exams`, `exam_versions`, `exam_version_questions`, and `exam_version_answer_keys` are strictly scoped by `school_id`.
   - Phase 1.5 database triggers (`trg_enforce_same_school_classes`, `trg_enforce_same_school_enrollments`, `trg_enforce_same_school_teacher_assignments`) block cross-school foreign-key linking even under elevated clients.
-  - Teachers can access, edit, and grade bank questions, draft exams, and student attempts **only** for subjects actively assigned to them (`auth_teacher_teaches_subject`, `auth_can_access_subject_content`, `auth_can_manage_exam`, `auth_teacher_can_grade_attempt`) and assign/schedule exams **only** for classes they teach or homeroom.
-  - Students can read **only** their own `students` row, their own active `class_enrollments`, `PUBLISHED`/`CLOSED` assigned exams (`auth_student_can_access_exam`), their own `exam_attempts`/`attempt_question_assignments`/`student_answers`/`submission_receipts`, and `exam_grades` explicitly marked `release_status = 'RELEASED'`. Students have **zero** RLS read policies or API routes accessing `question_answer_keys`, `exam_version_answer_keys`, `exam_version_questions`, explanations, grading rubrics, or exam drafts.
-  - Only `admin` users of the same school can mutate school records, exercise `exams.oversight`, cancel active student attempts (`cancel_exam_attempt_by_admin`), or read `audit_events`.
+  - Teachers can access, edit, and grade bank questions, draft exams, and student attempts **only** for subjects actively assigned to them (`auth_teacher_teaches_subject`, `auth_can_access_subject_content`, `auth_can_manage_exam`, `auth_teacher_can_grade_attempt`) and assign/schedule exams **only** for classes they teach or homeroom. Monitoring permissions (`monitoring.read`, `monitoring.incidents.write`, `monitoring.policies.write`, `monitoring.reports.export`) are similarly scoped per exam/school across `teacher`, `exam_coordinator`, `proctor`, and `auditor` (`monitoring.read` / `monitoring.reports.export`).
+  - Students can read **only** their own `students` row, their own active `class_enrollments`, `PUBLISHED`/`CLOSED` assigned exams (`auth_student_can_access_exam`), their own `exam_attempts`/`attempt_question_assignments`/`student_answers`/`submission_receipts`, and `exam_grades` explicitly marked `release_status = 'RELEASED'`. Students have **zero** RLS read policies or API routes accessing `question_answer_keys`, `exam_version_answer_keys`, `exam_version_questions`, explanations, grading rubrics, `secure_browser_configs` (`config_key_hash`, `browser_exam_key_hashes`, raw `.seb` XML), `exam_security_incidents`, `incident_review_actions`, or exam drafts.
+  - Phase 4 tightens `attempt_events` RLS so students cannot directly insert fabricated server-class event types (`event_source` is enforced strictly server-side inside `record_monitoring_events_batch_atomic` with <=2KB metadata caps and batch size <=25).
+  - Only `admin` users of the same school can mutate school records, exercise `exams.oversight` / `monitoring.oversight`, cancel active student attempts (`cancel_exam_attempt_by_admin`), run monitoring retention cleanup (`purge_old_monitoring_telemetry`), or read `audit_events`.
 - **Dual enforcement:** Authorization is checked both in Next.js server services (`src/policies/authorization.ts`) and natively inside PostgreSQL RLS policies.
 
 ---
@@ -52,10 +53,19 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 
 ---
 
-## 5. Planned Hardening Before Official High-Stakes Exams (Phase 4)
+## 5. Phase 4 Security Monitoring, SEB Cryptographic Proof & Privacy Controls
+
+- **Cryptographic SEB Proof (`VERIFIED_SEB_REQUIRED`):** SEB ConfigKey (`SEB-JSON` canonicalization + SHA-256) and per-request Request Hash (`SHA-256(normalizedUrl + keyHex)`) verification (`src/domain/monitoring/seb-verification.ts`) uses `crypto.timingSafeEqual` on the server; spoofable `User-Agent` strings never unlock a `VERIFIED_SEB_REQUIRED` exam or attempt workspace.
+- **Honest ExamBro Client Hints:** Android ExamBro detection is explicitly typed and surfaced as `unverified_client_hint` (`src/domain/monitoring/exambro-compat.ts`) because HTTP headers / JS hints from Android WebViews cannot establish hardware attestation without an official vendor signature/token.
+- **Emergency Bypass Governance:** Staff overrides (`exam_student_browser_overrides`) require explicit `monitoring.incidents.write` authorization, a justification note, bounded expiry (`durationMinutes`), and immutable audit logging.
+- **Data Minimization & Non-Accusatory Workflow:** Client telemetry batches are capped at 25 events with metadata `<= 2 KB` (`batchedMonitoringEventsSchema`), students receive clear Bahasa Indonesia privacy notices before starting, incidents never modify `exam_grades`, CSV monitoring reports neutralize spreadsheet formula prefixes, and Admins can execute dry-run / permanent telemetry retention purges (`purge_expired_monitoring_records_atomic`).
+
+---
+
+## 6. Planned Hardening Before Official High-Stakes Exams (Phase 5)
 
 - Enable MFA (TOTP) enforcement for Administrator, Exam Coordinator, and Teacher accounts.
 - Upgrade rate limiting to a distributed store (Supabase or Upstash) ahead of multi-instance scaling.
-- Execute live PostgreSQL verification of migrations `000001`–`000007`, RLS isolation, and concurrent RPC safety against a real database instance.
-- Validate real-device ExamBro Android & SEB iOS ConfigKey / BrowserExamKey enforcement before enforcing lockdown-only exams.
-- Conduct an independent OWASP ASVS verification pass prior to high-stakes launch.
+- Execute live PostgreSQL verification of migrations `000001`–`000009`, RLS isolation, Supabase Realtime delivery, and concurrent RPC safety against a real database instance.
+- Validate real-device ExamBro Android & SEB iOS ConfigKey / BrowserExamKey handshake flows on physical hardware before enforcing lockdown-only exams.
+- Conduct an independent OWASP ASVS verification pass and full 200+ concurrent virtual-student staging load drill prior to high-stakes launch.
