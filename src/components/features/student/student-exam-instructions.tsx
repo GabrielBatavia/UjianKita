@@ -14,8 +14,10 @@ import {
   Wifi,
 } from "lucide-react";
 import type { StudentExamAvailabilityItem } from "@/domain/exams/phase3-types";
+import type { StudentSecurityPolicyView } from "@/domain/monitoring/phase4-types";
 import { generateClientUuid, probeExamLocalStorageHealth } from "@/lib/exam-storage";
 import { formatDateTimeId } from "@/lib/utils";
+import { StudentExamSecurityCard } from "@/components/features/student/student-exam-security-card";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,12 +29,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+declare global {
+  interface Window {
+    SafeExamBrowser?: {
+      version?: string;
+      security?: {
+        updateKeys?: (
+          callback: (configKey: string, browserExamKey: string) => void
+        ) => void;
+        configKey?: string;
+        browserExamKey?: string;
+      };
+    };
+  }
+}
+
 export function StudentExamInstructions({
   exam,
   timeZone,
+  initialPolicy = null,
 }: {
   exam: StudentExamAvailabilityItem;
   timeZone: string;
+  initialPolicy?: StudentSecurityPolicyView | null;
 }) {
   const router = useRouter();
   const [startKey] = React.useState(() => generateClientUuid());
@@ -45,9 +64,85 @@ export function StudentExamInstructions({
     online: boolean;
     latencyMs: number | null;
   }>({ online: true, latencyMs: null });
+  const [securityPolicy, setSecurityPolicy] = React.useState<StudentSecurityPolicyView | null>(
+    initialPolicy
+  );
+  const [sebProof, setSebProof] = React.useState<{
+    pageUrl: string;
+    configKeyHash: string | null;
+    browserExamKeyHash: string | null;
+  } | null>(null);
+  const [sebStatus, setSebStatus] = React.useState<{
+    apiDetected: boolean;
+    verified: boolean;
+    detail: string | null;
+  }>({
+    apiDetected: false,
+    verified: Boolean(initialPolicy?.sebVerifiedForAttempt),
+    detail: null,
+  });
+  const [verifyingSeb, setVerifyingSeb] = React.useState(false);
   const [acknowledgedRules, setAcknowledgedRules] = React.useState(false);
   const [starting, setStarting] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  const runSebVerification = React.useCallback(async () => {
+    if (typeof window === "undefined") return;
+    const sebApi = window.SafeExamBrowser?.security;
+    if (!sebApi) {
+      setSebStatus((prev) => ({
+        ...prev,
+        apiDetected: false,
+        detail: "Objek JavaScript SafeExamBrowser tidak terdeteksi di peramban ini.",
+      }));
+      return;
+    }
+
+    setVerifyingSeb(true);
+    const submitKeys = async (configKey: string | null, browserExamKey: string | null) => {
+      const pageUrl = window.location.href.split("#")[0] ?? window.location.href;
+      setSebProof({
+        pageUrl,
+        configKeyHash: configKey,
+        browserExamKeyHash: browserExamKey,
+      });
+
+      try {
+        const res = await fetch(`/api/student/exams/${exam.examId}/seb-verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pageUrl,
+            configKeyHash: configKey,
+            browserExamKeyHash: browserExamKey,
+            sebVersion: window.SafeExamBrowser?.version ?? null,
+          }),
+        });
+        const data = (await res.json()) as { verified?: boolean; reason?: string };
+        setSebStatus({
+          apiDetected: true,
+          verified: Boolean(res.ok && data.verified),
+          detail: data.reason ?? (data.verified ? "Kunci SEB terverifikasi." : "Verifikasi kunci SEB gagal."),
+        });
+      } catch {
+        setSebStatus({
+          apiDetected: true,
+          verified: false,
+          detail: "Gagal menghubungi server untuk verifikasi kunci SEB.",
+        });
+      } finally {
+        setVerifyingSeb(false);
+      }
+    };
+
+    if (typeof sebApi.updateKeys === "function") {
+      sebApi.updateKeys((cfgKey, bekKey) => {
+        void submitKeys(cfgKey || null, bekKey || null);
+      });
+    } else {
+      void submitKeys(sebApi.configKey ?? null, sebApi.browserExamKey ?? null);
+    }
+  }, [exam.examId]);
 
   React.useEffect(() => {
     let active = true;
@@ -62,12 +157,30 @@ export function StudentExamInstructions({
 
       const started = performance.now();
       try {
-        const res = await fetch(`/api/student/exams/${exam.examId}`, { cache: "no-store" });
+        const [examRes, policyRes] = await Promise.all([
+          fetch(`/api/student/exams/${exam.examId}`, { cache: "no-store" }),
+          fetch(`/api/student/exams/${exam.examId}/policy`, { cache: "no-store" }),
+        ]);
         if (!active) return;
         setNetworkState({
-          online: res.ok && navigator.onLine,
+          online: examRes.ok && navigator.onLine,
           latencyMs: Math.round(performance.now() - started),
         });
+        if (policyRes.ok) {
+          const pData = (await policyRes.json()) as StudentSecurityPolicyView;
+          if (active) {
+            setSecurityPolicy(pData);
+            if (pData.sebVerifiedForAttempt) {
+              setSebStatus({
+                apiDetected: true,
+                verified: true,
+                detail: "Sesi aktif sudah terverifikasi menggunakan Safe Exam Browser.",
+              });
+            } else if (pData.sebEnabled && typeof window !== "undefined" && window.SafeExamBrowser?.security) {
+              void runSebVerification();
+            }
+          }
+        }
       } catch {
         if (!active) return;
         setNetworkState({ online: false, latencyMs: null });
@@ -77,7 +190,7 @@ export function StudentExamInstructions({
     return () => {
       active = false;
     };
-  }, [exam.examId]);
+  }, [exam.examId, runSebVerification]);
 
   async function handleStartExam() {
     if (starting) return;
@@ -86,12 +199,21 @@ export function StudentExamInstructions({
 
     try {
       const clientTz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? timeZone;
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+      const isExamBro = ua.includes("exambro") || ua.includes("dekikurnia");
       const res = await fetch(`/api/student/exams/${exam.examId}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startIdempotencyKey: startKey,
           clientTimezone: clientTz,
+          browserPlatformHint: isExamBro ? "ANDROID_EXAMBRO" : "STANDARD_WEB",
+          exambroHint: isExamBro,
+          ...(sebProof ? {
+            sebPageUrl: sebProof.pageUrl,
+            sebConfigKeyHash: sebProof.configKeyHash ?? undefined,
+            sebBrowserExamKeyHash: sebProof.browserExamKeyHash ?? undefined,
+          } : {}),
         }),
       });
       const data = (await res.json()) as {
@@ -216,6 +338,15 @@ export function StudentExamInstructions({
               </li>
             </ul>
           </div>
+
+          {securityPolicy ? (
+            <StudentExamSecurityCard
+              policy={securityPolicy}
+              sebStatus={sebStatus}
+              onRetrySebVerify={() => void runSebVerification()}
+              verifyingSeb={verifyingSeb}
+            />
+          ) : null}
 
           {errorMsg ? (
             <Alert variant="danger" title="Tidak Dapat Memulai Sesi">

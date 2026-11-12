@@ -5,6 +5,10 @@ import {
   noStoreJson,
   parseJsonBody,
 } from "@/lib/api-helpers";
+import {
+  getPolicyReaderClient,
+  resolveSafeRequestOrigin,
+} from "@/lib/supabase/policy-reader";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { startOrResumeStudentAttemptService } from "@/services/attempt-service";
 import { requireRoleActor } from "@/services/auth-service";
@@ -26,7 +30,12 @@ export async function POST(
       actor,
       examId,
       body,
-      buildAuditContext(request)
+      buildAuditContext(request),
+      {
+        policyReaderSupabase: getPolicyReaderClient(supabase),
+        origin: resolveSafeRequestOrigin(request),
+        headers: request.headers,
+      }
     );
     return noStoreJson(result, result.created ? 201 : 200);
   } catch (error) {
