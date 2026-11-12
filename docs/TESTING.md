@@ -83,3 +83,24 @@ Runs across 3 configured browser projects against `npm run build` via `npm run t
 3. **`mobile-iphone`** (`iPhone 13` WebKit — executed on Linux/Ubuntu CI runners; fails at launch on Windows hosts missing system WebKit DLL dependencies with `exitCode=3221225501`)
 
 Verifies security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`), `Cache-Control: no-store` on student/grading/monitoring APIs, zero horizontal overflow across desktop and mobile (`390x844`) viewports, fail-closed redirects to `/login`, fail-closed API responses, authenticated student exam -> reload resume -> essay blur -> review -> submit receipt -> teacher manual grading & release -> live monitoring flows (`phase5-authenticated-workflows.spec.ts`, auto-enabled when `.env.local` / Supabase env is present, skipped cleanly in DB-less CI), zero uncaught `pageerror` exceptions, and zero WCAG 2.2 AA `@axe-core/playwright` violations. *(Note: Playwright Pixel 7 and iPhone 13 profiles emulate responsive WebKit/Chromium viewports and do not substitute for physical ExamBro APK or SEB iOS/macOS WebView hardware verification.)*
+
+---
+
+## 5. Phase A Responsive, Screenshot & WCAG 2.1 AA Test Suites (`capture-screenshots.spec.ts` & `phase-a-accessibility.spec.ts`)
+
+Phase A introduces dedicated automated verification for mobile usability, responsive layouts, and accessibility:
+1. **Visual Screenshot Regression Suite (`tests/e2e/capture-screenshots.spec.ts`):**
+   - Captures full-page screenshots across 8 standard device viewports (`320px`, `360px`, `375px`, `390px`, `430px`, `768px`, `1024px`, `1440px`).
+   - Generates 88 baseline screenshots (`docs/screenshots/baseline/`) and 88 redesign screenshots (`docs/screenshots/redesign/`).
+   - Covers Landing, Login, Forgot Password, Not Found, Exam Player, Instructions, Review, Receipt, Question Bank, Student Management, and Monitoring Center.
+   - Run via:
+     ```bash
+     $env:SCREENSHOT_STAGE="redesign"; npx playwright test tests/e2e/capture-screenshots.spec.ts --project=desktop-chromium
+     ```
+2. **Automated Accessibility & Overflow Suite (`tests/e2e/phase-a-accessibility.spec.ts`):**
+   - Audits WCAG 2.1 AA compliance via `@axe-core/playwright` with 0 critical or serious violations.
+   - Enforces zero horizontal scrollbar (`document.documentElement.scrollWidth <= document.documentElement.clientWidth`) across all 8 viewport widths from 320px to 1440px.
+   - Run via:
+     ```bash
+     npx playwright test tests/e2e/phase-a-accessibility.spec.ts --project=desktop-chromium
+     ```

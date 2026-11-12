@@ -246,59 +246,128 @@ export function StudentsManager({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama &amp; Email</TableHead>
-              <TableHead>NIS / NISN</TableHead>
-              <TableHead>Kelas Aktif</TableHead>
-              <TableHead>Wali</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile Student Cards View (< md) */}
+          <div className="space-y-3 md:hidden">
             {filtered.map((student) => (
-              <TableRow key={student.id}>
-                <TableCell>
-                  <div className="font-semibold text-slate-900">{student.full_name}</div>
-                  <div className="text-xs text-slate-500">{student.email}</div>
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  <div>NIS: {student.nis}</div>
-                  {student.nisn ? <div className="text-slate-500">NISN: {student.nisn}</div> : null}
-                </TableCell>
-                <TableCell>
-                  {student.current_class_name ? (
-                    <Badge variant="default">{student.current_class_name}</Badge>
-                  ) : (
-                    <span className="text-xs text-slate-500">Belum ditempatkan</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-xs text-slate-600">
-                  <div>{student.guardian_name ?? "-"}</div>
-                  {student.guardian_phone ? <div>{student.guardian_phone}</div> : null}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={student.is_active ? "success" : "neutral"}>
+              <div
+                key={student.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{student.full_name}</p>
+                    <p className="text-xs text-slate-500 truncate">{student.email}</p>
+                  </div>
+                  <Badge variant={student.is_active ? "success" : "neutral"} className="shrink-0 text-[10px]">
                     {student.is_active ? "Aktif" : "Nonaktif"}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-right">
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Nomor Induk</span>
+                    <span className="font-mono font-medium text-slate-800">
+                      NIS: {student.nis}
+                    </span>
+                    {student.nisn ? (
+                      <span className="font-mono text-slate-500 block text-[11px]">
+                        NISN: {student.nisn}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Kelas</span>
+                    {student.current_class_name ? (
+                      <Badge variant="default" className="text-[10px] mt-0.5">
+                        {student.current_class_name}
+                      </Badge>
+                    ) : (
+                      <span className="text-slate-500 text-[11px]">Belum ditempatkan</span>
+                    )}
+                  </div>
+                </div>
+
+                {student.guardian_name ? (
+                  <div className="text-xs text-slate-500">
+                    Wali: <strong className="text-slate-700">{student.guardian_name}</strong>
+                    {student.guardian_phone ? ` (${student.guardian_phone})` : ""}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-end border-t border-slate-100 pt-2.5">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="min-h-[40px] px-3 font-semibold text-xs"
                     onClick={() => openEditDialog(student)}
                   >
                     <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>Edit</span>
+                    <span>Edit Profil</span>
                   </Button>
-                </TableCell>
-              </TableRow>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama &amp; Email</TableHead>
+                  <TableHead>NIS / NISN</TableHead>
+                  <TableHead>Kelas Aktif</TableHead>
+                  <TableHead>Wali</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell>
+                      <div className="font-semibold text-slate-900">{student.full_name}</div>
+                      <div className="text-xs text-slate-500">{student.email}</div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      <div>NIS: {student.nis}</div>
+                      {student.nisn ? <div className="text-slate-500">NISN: {student.nisn}</div> : null}
+                    </TableCell>
+                    <TableCell>
+                      {student.current_class_name ? (
+                        <Badge variant="default">{student.current_class_name}</Badge>
+                      ) : (
+                        <span className="text-xs text-slate-500">Belum ditempatkan</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      <div>{student.guardian_name ?? "-"}</div>
+                      {student.guardian_phone ? <div>{student.guardian_phone}</div> : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={student.is_active ? "success" : "neutral"}>
+                        {student.is_active ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(student)}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Edit</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Create Dialog */}

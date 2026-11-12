@@ -475,109 +475,198 @@ export function TeacherExamControlCenter({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Siswa</TableHead>
-                  <TableHead>Sesi</TableHead>
-                  <TableHead>Koneksi</TableHead>
-                  <TableHead>Progres</TableHead>
-                  <TableHead>Peramban &amp; Kepercayaan</TableHead>
-                  <TableHead>Sinyal Aktivitas</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.students.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-slate-500">
-                      Tidak ada peserta sesuai filter saat ini.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.students.map((row) => {
-                    const pBadge = PRESENCE_BADGE[row.presenceState];
-                    const sBadge = SEVERITY_BADGE[row.highestSeverity];
-                    return (
-                      <TableRow key={row.studentId}>
-                        <TableCell>
-                          <p className="font-semibold text-slate-900">{row.studentName}</p>
+          {data.students.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">
+              Tidak ada peserta sesuai filter saat ini.
+            </p>
+          ) : (
+            <>
+              {/* Mobile Student Roster Cards (< md) */}
+              <div className="space-y-3 md:hidden">
+                {data.students.map((row) => {
+                  const pBadge = PRESENCE_BADGE[row.presenceState];
+                  const sBadge = SEVERITY_BADGE[row.highestSeverity];
+                  return (
+                    <div
+                      key={row.studentId}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">{row.studentName}</p>
                           <p className="text-xs text-slate-500">
                             {row.studentNis ?? "Tanpa NIS"} • {row.className ?? "-"}
                           </p>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">
-                          {row.attemptStatus}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={pBadge.variant}>{pBadge.label}</Badge>
-                          {row.secondsSinceLastHeartbeat !== null ? (
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              {row.secondsSinceLastHeartbeat} dtk lalu
-                            </p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {row.answeredCount}/{row.totalQuestions} ({row.progressPercent}%)
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          <span className="block font-medium text-slate-800">
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant={pBadge.variant} className="text-[10px]">
+                            {pBadge.label}
+                          </Badge>
+                          <Badge variant={sBadge.variant} className="text-[10px]">
+                            {sBadge.label}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-slate-600">
+                          <span>
+                            Progres: {row.answeredCount}/{row.totalQuestions} soal
+                          </span>
+                          <span className="font-mono font-semibold">{row.progressPercent}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-blue-600 transition-all rounded-full"
+                            style={{ width: `${Math.min(100, Math.max(0, row.progressPercent))}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Browser & Activity metadata */}
+                      <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Peramban</span>
+                          <span className="truncate block font-medium text-slate-800">
                             {row.browserPlatform}
                           </span>
-                          <span className="text-[11px] text-slate-500">
-                            {row.browserTrustLevel === "verified_seb_header_and_key" ||
-                            row.browserTrustLevel === "verified_seb_js_key"
-                              ? "SEB Terverifikasi"
-                              : row.browserTrustLevel === "staff_override"
-                                ? "Pengecualian Pengawas"
-                                : row.browserTrustLevel === "unverified_client_hint"
-                                  ? "Petunjuk ExamBro (Unverified)"
-                                  : "Peramban Standar"}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Sinyal Anomali</span>
+                          <span>
+                            Tab: {row.visibilityHiddenCount}x • Salin: {row.copyPasteCount}x
                           </span>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-700">
-                          <div>Fokus pindah: {row.visibilityHiddenCount}x</div>
-                          <div>Muat ulang: {row.reloadCount}x</div>
-                          <div>Salin/Tempel: {row.copyPasteCount}x</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={sBadge.variant}>{sBadge.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-wrap justify-end gap-1.5">
-                            {row.attemptId ? (
-                              <Button asChild size="sm" variant="outline">
-                                <Link
-                                  href={`${basePath}/${data.exam.examId}/students/${row.attemptId}`}
-                                >
-                                  <span>Linimasa</span>
-                                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                                </Link>
-                              </Button>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-2.5">
+                        {row.attemptId ? (
+                          <Button asChild size="sm" variant="outline" className="min-h-[40px] px-3 font-semibold text-xs">
+                            <Link href={`${basePath}/${data.exam.examId}/students/${row.attemptId}`}>
+                              <span>Linimasa</span>
+                              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                            </Link>
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="min-h-[40px] px-3 text-xs"
+                          onClick={() => {
+                            setOverrideTarget(row);
+                            setOverrideFeedback(null);
+                          }}
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Pengecualian</span>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Student Table (>= md) */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Siswa</TableHead>
+                      <TableHead>Sesi</TableHead>
+                      <TableHead>Koneksi</TableHead>
+                      <TableHead>Progres</TableHead>
+                      <TableHead>Peramban &amp; Kepercayaan</TableHead>
+                      <TableHead>Sinyal Aktivitas</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.students.map((row) => {
+                      const pBadge = PRESENCE_BADGE[row.presenceState];
+                      const sBadge = SEVERITY_BADGE[row.highestSeverity];
+                      return (
+                        <TableRow key={row.studentId}>
+                          <TableCell>
+                            <p className="font-semibold text-slate-900">{row.studentName}</p>
+                            <p className="text-xs text-slate-500">
+                              {row.studentNis ?? "Tanpa NIS"} • {row.className ?? "-"}
+                            </p>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">
+                            {row.attemptStatus}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={pBadge.variant}>{pBadge.label}</Badge>
+                            {row.secondsSinceLastHeartbeat !== null ? (
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                {row.secondsSinceLastHeartbeat} dtk lalu
+                              </p>
                             ) : null}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setOverrideTarget(row);
-                                setOverrideFeedback(null);
-                              }}
-                            >
-                              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                              <span>Pengecualian</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {row.answeredCount}/{row.totalQuestions} ({row.progressPercent}%)
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <span className="block font-medium text-slate-800">
+                              {row.browserPlatform}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {row.browserTrustLevel === "verified_seb_header_and_key" ||
+                              row.browserTrustLevel === "verified_seb_js_key"
+                                ? "SEB Terverifikasi"
+                                : row.browserTrustLevel === "staff_override"
+                                  ? "Pengecualian Pengawas"
+                                  : row.browserTrustLevel === "unverified_client_hint"
+                                    ? "Petunjuk ExamBro (Unverified)"
+                                    : "Peramban Standar"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-slate-700">
+                            <div>Fokus pindah: {row.visibilityHiddenCount}x</div>
+                            <div>Muat ulang: {row.reloadCount}x</div>
+                            <div>Salin/Tempel: {row.copyPasteCount}x</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={sBadge.variant}>{sBadge.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              {row.attemptId ? (
+                                <Button asChild size="sm" variant="outline">
+                                  <Link
+                                    href={`${basePath}/${data.exam.examId}/students/${row.attemptId}`}
+                                  >
+                                    <span>Linimasa</span>
+                                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                                  </Link>
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setOverrideTarget(row);
+                                  setOverrideFeedback(null);
+                                }}
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Pengecualian</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

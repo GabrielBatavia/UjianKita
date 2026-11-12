@@ -18,6 +18,14 @@ export function isAuthPagePath(pathname: string): boolean {
 
 export async function updateSupabaseSession(request: NextRequest): Promise<NextResponse> {
   const pathname = request.nextUrl.pathname;
+
+  // Block dev preview in production unless explicitly enabled
+  if (pathname === "/dev-preview" || pathname.startsWith("/dev-preview/")) {
+    if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEV_PREVIEW !== "true") {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
+
   const envStatus = getPublicEnvStatus();
 
   // Fail closed on protected portal routes if Supabase is not configured yet

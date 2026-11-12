@@ -242,56 +242,116 @@ export function ClassesManager({
             }
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama Kelas</TableHead>
-                <TableHead>Tingkat / Program</TableHead>
-                <TableHead>Tahun Ajaran</TableHead>
-                <TableHead>Wali Kelas</TableHead>
-                <TableHead>Siswa Terdaftar</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile Classes Cards View (< md) */}
+            <div className="space-y-3 md:hidden">
               {initialClasses.map((cls) => (
-                <TableRow key={cls.id}>
-                  <TableCell className="font-semibold text-slate-900">{cls.name}</TableCell>
-                  <TableCell>
-                    <div>Tingkat {cls.grade_level}</div>
-                    {cls.program ? (
-                      <div className="text-xs text-slate-500">{cls.program}</div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-600">
-                    {cls.academic_year_name ?? "-"} ({cls.academic_year_semester ?? "-"})
-                  </TableCell>
-                  <TableCell>{cls.homeroom_teacher_name ?? "-"}</TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {cls.enrolled_count ?? 0}
-                    {cls.capacity ? ` / ${cls.capacity}` : ""}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={cls.is_active ? "success" : "neutral"}>
+                <div
+                  key={cls.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate text-base">{cls.name}</p>
+                      <p className="text-xs text-slate-500">
+                        Tingkat {cls.grade_level} {cls.program ? `• ${cls.program}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant={cls.is_active ? "success" : "neutral"} className="shrink-0 text-[10px]">
                       {cls.is_active ? "Aktif" : "Nonaktif"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Tahun Ajaran</span>
+                      <span className="truncate block font-medium text-slate-800">
+                        {cls.academic_year_name ?? "-"} ({cls.academic_year_semester ?? "-"})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Siswa Terdaftar</span>
+                      <span className="font-mono font-medium text-slate-800">
+                        {cls.enrolled_count ?? 0}
+                        {cls.capacity ? ` / ${cls.capacity}` : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-500">
+                    Wali Kelas: <strong className="text-slate-700">{cls.homeroom_teacher_name ?? "-"}</strong>
+                  </div>
+
+                  <div className="flex items-center justify-end border-t border-slate-100 pt-2.5">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="min-h-[40px] px-3 font-semibold text-xs"
                       onClick={() => openEditClass(cls)}
                     >
                       <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Edit</span>
+                      <span>Edit Kelas</span>
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop Classes Table (>= md) */}
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama Kelas</TableHead>
+                    <TableHead>Tingkat / Program</TableHead>
+                    <TableHead>Tahun Ajaran</TableHead>
+                    <TableHead>Wali Kelas</TableHead>
+                    <TableHead>Siswa Terdaftar</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {initialClasses.map((cls) => (
+                    <TableRow key={cls.id}>
+                      <TableCell className="font-semibold text-slate-900">{cls.name}</TableCell>
+                      <TableCell>
+                        <div>Tingkat {cls.grade_level}</div>
+                        {cls.program ? (
+                          <div className="text-xs text-slate-500">{cls.program}</div>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600">
+                        {cls.academic_year_name ?? "-"} ({cls.academic_year_semester ?? "-"})
+                      </TableCell>
+                      <TableCell>{cls.homeroom_teacher_name ?? "-"}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {cls.enrolled_count ?? 0}
+                        {cls.capacity ? ` / ${cls.capacity}` : ""}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={cls.is_active ? "success" : "neutral"}>
+                          {cls.is_active ? "Aktif" : "Nonaktif"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditClass(cls)}
+                        >
+                          <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Edit</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </TabsContent>
 
@@ -303,48 +363,94 @@ export function ClassesManager({
             description="Tambahkan tahun ajaran aktif untuk mengatur struktur kelas."
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tahun Ajaran</TableHead>
-                <TableHead>Semester</TableHead>
-                <TableHead>Periode</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile Years Cards View (< md) */}
+            <div className="space-y-3 md:hidden">
               {initialAcademicYears.map((y) => (
-                <TableRow key={y.id}>
-                  <TableCell className="font-semibold">{y.name}</TableCell>
-                  <TableCell>{y.semester}</TableCell>
-                  <TableCell className="text-xs text-slate-600">
-                    {formatDateId(y.starts_on)} — {formatDateId(y.ends_on)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={y.is_active ? "success" : "neutral"}>
+                <div
+                  key={y.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-slate-900 text-base">{y.name}</p>
+                      <p className="text-xs text-slate-500">{y.semester}</p>
+                    </div>
+                    <Badge variant={y.is_active ? "success" : "neutral"} className="shrink-0 text-[10px]">
                       {y.is_active ? "Aktif" : "Arsip"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </div>
+
+                  <p className="text-xs text-slate-600">
+                    Periode: {formatDateId(y.starts_on)} — {formatDateId(y.ends_on)}
+                  </p>
+
+                  <div className="flex items-center justify-end border-t border-slate-100 pt-2.5">
                     {!y.is_active ? (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="min-h-[40px] px-3 font-semibold text-xs"
                         disabled={submitting}
                         onClick={() => handleActivateYear(y.id)}
                       >
                         Aktifkan
                       </Button>
                     ) : (
-                      <span className="text-xs text-slate-500">Sedang Berjalan</span>
+                      <span className="text-xs font-semibold text-emerald-700">Sedang Berjalan</span>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop Years Table (>= md) */}
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tahun Ajaran</TableHead>
+                    <TableHead>Semester</TableHead>
+                    <TableHead>Periode</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {initialAcademicYears.map((y) => (
+                    <TableRow key={y.id}>
+                      <TableCell className="font-semibold">{y.name}</TableCell>
+                      <TableCell>{y.semester}</TableCell>
+                      <TableCell className="text-xs text-slate-600">
+                        {formatDateId(y.starts_on)} — {formatDateId(y.ends_on)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={y.is_active ? "success" : "neutral"}>
+                          {y.is_active ? "Aktif" : "Arsip"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!y.is_active ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={submitting}
+                            onClick={() => handleActivateYear(y.id)}
+                          >
+                            Aktifkan
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-slate-500">Sedang Berjalan</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </TabsContent>
 

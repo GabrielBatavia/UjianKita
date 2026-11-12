@@ -264,89 +264,181 @@ export function TeachersManager({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama &amp; Email</TableHead>
-              <TableHead>NIP / Kepegawaian</TableHead>
-              <TableHead>Penugasan Mengajar</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile Teacher Cards View (< md) */}
+          <div className="space-y-3 md:hidden">
             {filtered.map((teacher) => (
-              <TableRow key={teacher.id}>
-                <TableCell>
-                  <div className="font-semibold text-slate-900">{teacher.full_name}</div>
-                  <div className="text-xs text-slate-500">{teacher.email}</div>
-                  {teacher.specialization ? (
-                    <div className="text-xs text-slate-600">{teacher.specialization}</div>
-                  ) : null}
-                </TableCell>
-                <TableCell className="text-xs">
-                  <div className="font-mono">{teacher.nip ?? "-"}</div>
-                  <Badge variant="neutral" className="mt-1">
-                    {teacher.employment_status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {teacher.assignments && teacher.assignments.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {teacher.assignments.map((a) => (
-                        <span
-                          key={a.id}
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
-                        >
-                          <span>
-                            {a.class_name} • {a.subject_name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAssignment(a.id)}
-                            aria-label={`Hapus penugasan ${a.class_name} ${a.subject_name}`}
-                            className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-3 w-3" aria-hidden="true" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-500">Belum ada penugasan</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={teacher.is_active ? "success" : "neutral"}>
-                    {teacher.is_active ? "Aktif" : "Nonaktif"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAssignDialog(teacher)}
-                    >
-                      <BookPlus className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Tugaskan</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(teacher)}
-                    >
-                      <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Edit</span>
-                    </Button>
+              <div
+                key={teacher.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{teacher.full_name}</p>
+                    <p className="text-xs text-slate-500 truncate">{teacher.email}</p>
+                    {teacher.specialization ? (
+                      <p className="text-xs text-slate-600 mt-0.5">{teacher.specialization}</p>
+                    ) : null}
                   </div>
-                </TableCell>
-              </TableRow>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge variant={teacher.is_active ? "success" : "neutral"} className="text-[10px]">
+                      {teacher.is_active ? "Aktif" : "Nonaktif"}
+                    </Badge>
+                    <Badge variant="neutral" className="text-[10px]">
+                      {teacher.employment_status}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 uppercase">NIP</span>
+                    <span className="font-mono font-medium text-slate-800">{teacher.nip ?? "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase mb-1">
+                      Penugasan Mengajar
+                    </span>
+                    {teacher.assignments && teacher.assignments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {teacher.assignments.map((a) => (
+                          <span
+                            key={a.id}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-700"
+                          >
+                            <span>
+                              {a.class_name} • {a.subject_name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAssignment(a.id)}
+                              aria-label={`Hapus penugasan ${a.class_name} ${a.subject_name}`}
+                              className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" aria-hidden="true" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Belum ada penugasan</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[40px] px-3 font-semibold text-xs"
+                    onClick={() => openAssignDialog(teacher)}
+                  >
+                    <BookPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>Tugaskan</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[40px] px-3 font-semibold text-xs"
+                    onClick={() => openEditDialog(teacher)}
+                  >
+                    <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>Edit</span>
+                  </Button>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama &amp; Email</TableHead>
+                  <TableHead>NIP / Kepegawaian</TableHead>
+                  <TableHead>Penugasan Mengajar</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((teacher) => (
+                  <TableRow key={teacher.id}>
+                    <TableCell>
+                      <div className="font-semibold text-slate-900">{teacher.full_name}</div>
+                      <div className="text-xs text-slate-500">{teacher.email}</div>
+                      {teacher.specialization ? (
+                        <div className="text-xs text-slate-600">{teacher.specialization}</div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <div className="font-mono">{teacher.nip ?? "-"}</div>
+                      <Badge variant="neutral" className="mt-1">
+                        {teacher.employment_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {teacher.assignments && teacher.assignments.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {teacher.assignments.map((a) => (
+                            <span
+                              key={a.id}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
+                            >
+                              <span>
+                                {a.class_name} • {a.subject_name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAssignment(a.id)}
+                                aria-label={`Hapus penugasan ${a.class_name} ${a.subject_name}`}
+                                className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3" aria-hidden="true" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">Belum ada penugasan</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={teacher.is_active ? "success" : "neutral"}>
+                        {teacher.is_active ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAssignDialog(teacher)}
+                        >
+                          <BookPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Tugaskan</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(teacher)}
+                        >
+                          <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Edit</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Create Dialog */}

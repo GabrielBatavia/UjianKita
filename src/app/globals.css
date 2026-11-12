@@ -1,34 +1,65 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
+  /* Surfaces & Backgrounds */
   --color-background: #ffffff;
   --color-surface: #f8fafc;
   --color-surface-muted: #f1f5f9;
+  --color-surface-elevated: #ffffff;
+
+  /* Typography & Foreground */
   --color-foreground: #0f172a;
-  --color-muted: #475569;
+  --color-foreground-muted: #334155;
+  --color-muted: #64748b;
+  --color-subtle: #94a3b8;
+
+  /* Borders & Dividers */
   --color-border: #e2e8f0;
   --color-border-strong: #cbd5e1;
+  --color-border-subtle: #f1f5f9;
 
+  /* Brand Primary (Trustworthy Educational Blue) */
   --color-primary: #1d4ed8;
   --color-primary-hover: #1e40af;
+  --color-primary-active: #172554;
   --color-primary-soft: #eff6ff;
+  --color-primary-subtle: #dbeafe;
   --color-primary-foreground: #ffffff;
 
+  /* Semantic State Colors (WCAG AA Compliant) */
   --color-success: #15803d;
+  --color-success-hover: #166534;
   --color-success-soft: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-success-foreground: #14532d;
+
   --color-warning: #b45309;
+  --color-warning-hover: #92400e;
   --color-warning-soft: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-warning-foreground: #78350f;
+
   --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
   --color-danger-soft: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-danger-foreground: #7f1d1d;
+
+  /* Elevation Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.05);
+  --shadow-dropdown: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.07);
+  --shadow-modal: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.1);
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
     color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -37,10 +68,41 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
 
+  /* Universal accessible focus outline token */
   *:focus-visible {
     outline: 2px solid #2563eb;
     outline-offset: 2px;
   }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+}
+
+@utility pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 1rem);
+}
+
+@utility h-dvh {
+  height: 100dvh;
+}
+
+@utility min-h-dvh {
+  min-height: 100dvh;
 }
