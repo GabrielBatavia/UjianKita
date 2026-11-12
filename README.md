@@ -2,8 +2,8 @@
 
 **UjianKita** is a web-first Computer-Based Testing (CBT) platform designed for official school examinations on students' personal Android phones (via **ExamBro**) and iPhones (via **Safe Exam Browser / SEB**), paired with web workspaces for school administrators and teachers.
 
-> **Current Stage — Phase 6.5 (Controlled Production Cutover, Cloud Integration & Final Verification):**
-> Phases 1–6.5 deliver the complete Next.js 16 + Supabase PostgreSQL CBT application across migrations `000001`–`000011`, running live on **Vercel Production** (`https://ujiankita-three.vercel.app`) co-located in Mumbai (`bom1`) with **Supabase PostgreSQL 17** (`hqoxqmmkysnnneqlepuj`). Features include Question Bank, Examination Builder & immutable `exam_versions`, authoritative student attempt/autosave/submission/receipt engine, automated + manual grading with audited adjustments, Phase 4 examination security & real-time proctoring control centers, distributed PostgreSQL login rate-limiting (`000011`), and full end-to-end cloud staging & production verification. **Operational Classification:** The system is live in a **Controlled Evaluation / Closed School Pilot Preparation** state. High-stakes official school rollout remains gated on physical Android ExamBro / iOS Safe Exam Browser device pilots, commercial tier upgrades (Supabase Pro with PITR backups), and staff TOTP MFA; see [`docs/PRODUCTION_READINESS_GAPS.md`](docs/PRODUCTION_READINESS_GAPS.md) and [`docs/PILOT_READINESS_CHECKLIST.md`](docs/PILOT_READINESS_CHECKLIST.md).
+> **Current Stage — Phase A (Complete UI/UX Modernization, Design System & Mobile-First Compatibility):**
+> Following Phases 1–6.5 (which delivered the complete Next.js 16 + Supabase PostgreSQL CBT application engine, immutable exam versioning, authoritative timer and autosave logic, and production cutover), Phase A modernizes the entire interface into a polished, accessible, mobile-first SaaS platform. With Phase 7 postponed, Phase A elevates student examination ergonomics on smartphones (320px–430px viewports), standardizes a WCAG 2.1 AA compliant design system with semantic tokens, eliminates iOS Safari auto-zoom quirks, implements adaptive table-to-card transformations across teacher/admin management rosters, and establishes a mobile slide-over drawer and student bottom navigation with hardware safe-area padding (`pb-safe`).
 
 ---
 
@@ -89,6 +89,16 @@ npm run test:e2e
 
 ## Documentation Index
 
+### Phase A — UI/UX Modernization, Design System & Mobile Compatibility
+- [`docs/PHASE_A_UI_UX_AUDIT.md`](docs/PHASE_A_UI_UX_AUDIT.md) — Comprehensive pre-redesign audit, issue inventory, and design evaluations
+- [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) — Design system specification, semantic color tokens, typography scale, and components
+- [`docs/MOBILE_COMPATIBILITY.md`](docs/MOBILE_COMPATIBILITY.md) — Mobile web compatibility, viewport matrix (320px–1440px), safe areas, and quirks handling
+- [`docs/STUDENT_EXAM_UX.md`](docs/STUDENT_EXAM_UX.md) — End-to-end student exam lifecycle UX, thumb zone ergonomics, and zero-data-loss architecture
+- [`docs/RESPONSIVE_TEST_RESULTS.md`](docs/RESPONSIVE_TEST_RESULTS.md) — Detailed responsive verification matrix and 8-viewport test results
+- [`docs/ACCESSIBILITY_AUDIT.md`](docs/ACCESSIBILITY_AUDIT.md) — Automated Axe-core WCAG 2.1 AA audit, color contrast ratios, and keyboard navigation
+- [`docs/PHASE_A_VERIFICATION.md`](docs/PHASE_A_VERIFICATION.md) — Phase A executive release verification and quality gate report
+
+### Core Architecture & Technical Documentation
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Modular monolith design & blueprint deviations
 - [`docs/DATABASE.md`](docs/DATABASE.md) — Phase 1–3 schemas, RLS model, immutability triggers, and RPCs
 - [`docs/QUESTION_BANK.md`](docs/QUESTION_BANK.md) — Question types, immutable versioning, Safe KaTeX, and CSV/XLSX bulk import

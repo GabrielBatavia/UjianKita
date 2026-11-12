@@ -65,7 +65,25 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
 
 ---
 
-## Phase 7 — Supervised School Pilot & Hardware Field Validation (Upcoming)
+## Phase A — UI/UX Modernization, Design System & Mobile-First Compatibility (Completed)
+
+- **Important Decision:** Phase 7 (school onboarding, cloud load testing, physical device lockdowns) is explicitly postponed. Phase A focuses exclusively on user interface/experience modernization, mobile browser compatibility, accessibility, and examination usability.
+- **Scope:**
+  - Audited all 31 routes and 36 core components across Public, Student, Teacher, and Administrator roles.
+  - Implemented a unified, accessible design system with WCAG 2.1 AA compliant semantic tokens in `src/app/globals.css`.
+  - Added hardware safe-area support (`viewportFit: "cover"`, `pb-safe`, `pt-safe`) for iPhone home indicators and dynamic islands.
+  - Mitigated iOS Safari form auto-zoom with `text-base sm:text-sm` across all input, textarea, and select primitives.
+  - Redesigned the Student Exam Player (`ExamPlayerClient`) with a compact 56px sticky header, 56px touch target options with bold letter badges, unified sticky bottom navigation, and mobile question palette modal.
+  - Upgraded PortalShell navigation: persistent 4-item bottom navigation for students on mobile; slide-over sheet drawer (`z-50`) with backdrop blur and escape dismissal for teachers/admins.
+  - Implemented adaptive table-to-card transformations on `< md` viewports across Teacher Question Bank, Monitoring Center, and Administrator rosters.
+  - Verified zero horizontal overflow across 8 standard device viewports (320px–1440px).
+  - Captured 88 baseline and 88 redesign comparison screenshots across 8 device viewports (176 total captures in `docs/screenshots/`).
+  - Zero database schema migrations, zero RLS changes, and full preservation of exam domain logic and timers.
+- **Status:** **Completed & Verified.** All 66 unit tests, 12 accessibility tests, linting, and Next.js production builds passing with 0 errors.
+
+---
+
+## Phase 7 — Supervised School Pilot & Hardware Field Validation (Postponed)
 
 - **Target Scope:**
   - Pilot testing with physical Android phones running `com.dekikurnia.exambro` and iOS/macOS devices running Safe Exam Browser.

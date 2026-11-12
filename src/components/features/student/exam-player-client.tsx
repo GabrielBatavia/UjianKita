@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +44,7 @@ import {
   upsertPendingAnswerDraft,
 } from "@/lib/exam-storage";
 import { QuestionContentRenderer } from "@/components/features/exams/question-content-renderer";
+import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -799,7 +799,7 @@ export function ExamPlayerClient({
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 pb-20 lg:pb-8">
+    <div className="relative min-h-screen bg-slate-50 pb-28 lg:pb-12">
       <StudentExamWatermark
         enabled={securityPolicy?.watermarkEnabled ?? true}
         opacity={securityPolicy?.watermarkOpacity ?? 0.08}
@@ -807,77 +807,98 @@ export function ExamPlayerClient({
         attemptId={attemptId}
       />
       {/* Sticky Focused Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-6">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-slate-900 sm:text-base">
-              {initialWorkspace.examTitle}
-            </p>
-            <p className="truncate text-xs text-slate-600">
-              {initialWorkspace.subjectName} • Percobaan {initialWorkspace.attempt.attemptNumber}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Network Status */}
-            <Badge
-              variant={isOnline ? "success" : "warning"}
-              className="flex items-center gap-1"
-              aria-live="polite"
-            >
-              {isOnline ? (
-                <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
-              ) : (
-                <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              <span>{isOnline ? "Online" : "Terputus"}</span>
-            </Badge>
-
-            {/* Authoritative Save State */}
-            <Badge
-              variant={
-                badgeState === "Tersimpan"
-                  ? "success"
-                  : badgeState === "Menyimpan..."
-                    ? "default"
-                    : badgeState === "Gagal menyimpan"
-                      ? "danger"
-                      : "warning"
-              }
-              aria-live="polite"
-            >
-              {badgeState}
-              {pendingKeys.length > 0 ? ` (${pendingKeys.length})` : ""}
-            </Badge>
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xs shadow-xs">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-3 py-2 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-slate-900 sm:text-base">
+                {initialWorkspace.examTitle}
+              </p>
+              <p className="truncate text-xs text-slate-600">
+                {initialWorkspace.subjectName} • Percobaan {initialWorkspace.attempt.attemptNumber}
+              </p>
+            </div>
 
             {/* Authoritative Server Timer */}
             <div
               role="timer"
               aria-label={`Sisa waktu ${formatCountdownMs(remainingMs)}`}
-              className={`flex min-h-[36px] items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-sm font-bold ${
+              className={cn(
+                "flex shrink-0 min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-sm sm:text-base font-bold shadow-2xs",
                 isCriticalTime
-                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  ? "border-rose-300 bg-rose-50 text-rose-700 animate-pulse"
                   : isWarningTime
-                    ? "border-amber-300 bg-amber-50 text-amber-800"
-                    : "border-slate-200 bg-slate-100 text-slate-900"
-              }`}
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-slate-50 text-slate-900"
+              )}
             >
-              <Clock className="h-4 w-4" aria-hidden="true" />
+              <Clock
+                className={cn(
+                  "h-4 w-4",
+                  isCriticalTime
+                    ? "text-rose-600"
+                    : isWarningTime
+                      ? "text-amber-600"
+                      : "text-slate-500"
+                )}
+                aria-hidden="true"
+              />
               <span>{formatCountdownMs(remainingMs)}</span>
             </div>
+          </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setPaletteOpen(true)}
-            >
-              <Grid2x2 className="h-4 w-4" aria-hidden="true" />
-              <span>
-                {currentIdx + 1}/{questions.length}
+          <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-1.5 text-xs">
+            <div className="flex items-center gap-2">
+              {/* Network Status */}
+              <Badge
+                variant={isOnline ? "success" : "warning"}
+                className="flex items-center gap-1 py-0.5 text-[11px]"
+                aria-live="polite"
+              >
+                {isOnline ? (
+                  <Wifi className="h-3 w-3" aria-hidden="true" />
+                ) : (
+                  <WifiOff className="h-3 w-3" aria-hidden="true" />
+                )}
+                <span>{isOnline ? "Online" : "Terputus"}</span>
+              </Badge>
+
+              {/* Authoritative Save State */}
+              <Badge
+                variant={
+                  badgeState === "Tersimpan"
+                    ? "success"
+                    : badgeState === "Menyimpan..."
+                      ? "default"
+                      : badgeState === "Gagal menyimpan"
+                        ? "danger"
+                        : "warning"
+                }
+                className="py-0.5 text-[11px]"
+                aria-live="polite"
+              >
+                {badgeState}
+                {pendingKeys.length > 0 ? ` (${pendingKeys.length})` : ""}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-slate-600 text-[11px] font-medium hidden sm:inline">
+                Terjawab <strong>{answeredCount}</strong>/{questions.length}
               </span>
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[32px] h-8 px-2.5 text-xs lg:hidden"
+                onClick={() => setPaletteOpen(true)}
+              >
+                <Grid2x2 className="h-3.5 w-3.5 text-blue-700" aria-hidden="true" />
+                <span>
+                  Soal {currentIdx + 1}/{questions.length}
+                </span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -968,13 +989,22 @@ export function ExamPlayerClient({
                       variant={activeQuestion.isFlaggedForReview ? "secondary" : "outline"}
                       size="sm"
                       onClick={() => void handleToggleFlag(activeQuestion)}
-                      className={
+                      className={cn(
+                        "min-h-[38px] transition-all",
                         activeQuestion.isFlaggedForReview
-                          ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                          : ""
-                      }
+                          ? "border-amber-400 bg-amber-50 text-amber-950 font-bold ring-1 ring-amber-400 hover:bg-amber-100"
+                          : "text-slate-700 hover:bg-slate-50"
+                      )}
                     >
-                      <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                      <Flag
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          activeQuestion.isFlaggedForReview
+                            ? "fill-amber-500 text-amber-600"
+                            : "text-slate-400"
+                        )}
+                        aria-hidden="true"
+                      />
                       <span>
                         {activeQuestion.isFlaggedForReview ? "Ditandai Ragu" : "Tandai Ragu-ragu"}
                       </span>
@@ -1012,11 +1042,12 @@ export function ExamPlayerClient({
                           return (
                             <label
                               key={opt.optionKey}
-                              className={`flex min-h-[52px] cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+                              className={cn(
+                                "flex min-h-[56px] cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-all select-none",
                                 isSelected
-                                  ? "border-blue-600 bg-blue-50/70 ring-1 ring-blue-600"
-                                  : "border-slate-200 bg-white hover:bg-slate-50"
-                              }`}
+                                  ? "border-blue-600 bg-blue-50/80 ring-2 ring-blue-600 shadow-xs"
+                                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                              )}
                             >
                               <input
                                 type="radio"
@@ -1031,12 +1062,19 @@ export function ExamPlayerClient({
                                     selectedOptionKey: opt.optionKey,
                                   })
                                 }
-                                className="mt-1 h-4 w-4 text-blue-700"
+                                className="mt-1 h-4 w-4 text-blue-700 focus:ring-blue-600"
                               />
-                              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-800">
+                              <span
+                                className={cn(
+                                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                                  isSelected
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-slate-100 text-slate-800 border border-slate-200"
+                                )}
+                              >
                                 {opt.optionKey}
                               </span>
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0 flex-1 pt-0.5 text-sm sm:text-base leading-relaxed text-slate-900">
                                 <QuestionContentRenderer content={opt.optionText} />
                               </div>
                             </label>
@@ -1055,7 +1093,7 @@ export function ExamPlayerClient({
                               selectedOptionKey: null,
                             })
                           }
-                          className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+                          className="text-xs font-semibold text-slate-600 underline hover:text-slate-900 transition-colors py-1 inline-block"
                         >
                           Batalkan pilihan jawaban
                         </button>
@@ -1068,7 +1106,7 @@ export function ExamPlayerClient({
                     <div
                       role="group"
                       aria-label={`Pilihan ganda kompleks soal ${activeQuestion.displayIndex}`}
-                      className="space-y-2.5"
+                      className="space-y-3"
                     >
                       <p className="text-xs font-medium text-slate-600">
                         Pilih semua jawaban yang benar:
@@ -1083,11 +1121,12 @@ export function ExamPlayerClient({
                         return (
                           <label
                             key={opt.optionKey}
-                            className={`flex min-h-[52px] cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+                            className={cn(
+                              "flex min-h-[56px] cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-all select-none",
                               isChecked
-                                ? "border-blue-600 bg-blue-50/70 ring-1 ring-blue-600"
-                                : "border-slate-200 bg-white hover:bg-slate-50"
-                            }`}
+                                ? "border-blue-600 bg-blue-50/80 ring-2 ring-blue-600 shadow-xs"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                            )}
                           >
                             <input
                               type="checkbox"
@@ -1101,12 +1140,19 @@ export function ExamPlayerClient({
                                   selectedOptionKeys: nextKeys,
                                 });
                               }}
-                              className="mt-1 h-4 w-4 rounded text-blue-700"
+                              className="mt-1 h-4 w-4 rounded text-blue-700 focus:ring-blue-600"
                             />
-                            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-800">
+                            <span
+                              className={cn(
+                                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold transition-colors",
+                                isChecked
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 text-slate-800 border border-slate-200"
+                              )}
+                            >
                               {opt.optionKey}
                             </span>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 pt-0.5 text-sm sm:text-base leading-relaxed text-slate-900">
                               <QuestionContentRenderer content={opt.optionText} />
                             </div>
                           </label>
@@ -1117,15 +1163,15 @@ export function ExamPlayerClient({
 
                   {/* Essay */}
                   {activeQuestion.questionType === "essay" && (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-xs text-slate-600">
                         <label
                           htmlFor={`essay-${activeQuestion.attemptQuestionId}`}
-                          className="font-medium"
+                          className="font-medium text-slate-700"
                         >
                           Jawaban Esai Anda
                         </label>
-                        <span className="font-mono">
+                        <span className="font-mono text-slate-500">
                           {(activeQuestion.currentResponse?.questionType === "essay"
                             ? activeQuestion.currentResponse.textAnswer.length
                             : 0
@@ -1145,31 +1191,52 @@ export function ExamPlayerClient({
                         }
                         onChange={(e) => updateEssayText(activeQuestion, e.target.value)}
                         onBlur={() => void flushCurrentEssayIfPending()}
-                        className="text-base leading-relaxed"
+                        className="text-base leading-relaxed min-h-[160px] p-4"
                       />
+                      <p className="text-[11px] text-slate-500 italic">
+                        Jawaban esai tersimpan otomatis setiap selesai mengetik atau berpindah nomor soal.
+                      </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             ) : null}
 
-            {/* Question Navigation Footer — intentionally separates "Sebelumnya / Berikutnya" from "Tinjau & Kumpulkan" */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+            {/* Unified Responsive Question Navigation Footer: sticky on mobile, static card on desktop */}
+            <div className="fixed inset-x-0 bottom-0 z-30 lg:static border-t lg:border border-slate-200 bg-white/95 p-3 sm:p-4 backdrop-blur-sm pb-safe lg:pb-4 lg:rounded-xl shadow-lg lg:shadow-xs flex items-center justify-between gap-3">
               <Button
                 type="button"
                 variant="outline"
                 disabled={currentIdx === 0}
                 onClick={() => void switchQuestion(Math.max(0, currentIdx - 1))}
+                className="min-h-[44px] px-3 sm:px-4 font-semibold text-xs sm:text-sm"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 <span>Sebelumnya</span>
               </Button>
+
+              {/* Mobile Palette Trigger (center on mobile) */}
+              <div className="lg:hidden">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPaletteOpen(true)}
+                  className="min-h-[44px] px-3 text-xs sm:text-sm border border-slate-200 font-semibold"
+                >
+                  <Grid2x2 className="h-4 w-4 text-blue-700" aria-hidden="true" />
+                  <span>
+                    Soal {currentIdx + 1}/{questions.length}
+                  </span>
+                </Button>
+              </div>
 
               <div className="flex items-center gap-2">
                 {currentIdx < questions.length - 1 ? (
                   <Button
                     type="button"
                     onClick={() => void switchQuestion(Math.min(questions.length - 1, currentIdx + 1))}
+                    className="min-h-[44px] px-4 font-semibold text-xs sm:text-sm"
                   >
                     <span>Berikutnya</span>
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -1180,7 +1247,7 @@ export function ExamPlayerClient({
                     variant="secondary"
                     disabled={navigatingToReview}
                     onClick={() => void handleGoToReview()}
-                    className="bg-emerald-700 text-white hover:bg-emerald-800"
+                    className="min-h-[44px] bg-emerald-700 text-white hover:bg-emerald-800 px-4 font-semibold text-xs sm:text-sm"
                   >
                     {navigatingToReview ? (
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1279,27 +1346,6 @@ export function ExamPlayerClient({
         </div>
       </div>
 
-      {/* Mobile Bottom Quick Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2 lg:hidden">
-        <span className="text-xs font-medium text-slate-700">
-          Terjawab <strong>{answeredCount}</strong>/{questions.length}
-        </span>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setPaletteOpen(true)}>
-            <Grid2x2 className="h-4 w-4" aria-hidden="true" />
-            <span>Daftar Soal</span>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={navigatingToReview}
-            onClick={() => void handleGoToReview()}
-          >
-            <span>Tinjau</span>
-          </Button>
-        </div>
-      </div>
-
       {/* Mobile Palette Overlay Modal */}
       {paletteOpen ? (
         <div
@@ -1308,25 +1354,26 @@ export function ExamPlayerClient({
           aria-label="Navigasi nomor soal"
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4 lg:hidden"
         >
-          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl pb-safe shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Daftar Nomor Soal</h2>
                 <p className="text-xs text-slate-600">
-                  Terjawab {answeredCount}/{questions.length} • Ragu {flaggedCount}
+                  Terjawab <strong>{answeredCount}</strong>/{questions.length} • Ragu{" "}
+                  <strong>{flaggedCount}</strong>
                 </p>
               </div>
               <button
                 type="button"
                 aria-label="Tutup daftar soal"
                 onClick={() => setPaletteOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="grid grid-cols-5 gap-2 py-4">
+            <div className="grid grid-cols-5 gap-2.5 py-4">
               {questions.map((q, idx) => {
                 const answered = hasFilledAnswer(q.currentResponse);
                 const flagged = q.isFlaggedForReview;
@@ -1334,19 +1381,24 @@ export function ExamPlayerClient({
 
                 let styleClass = "border-slate-200 bg-white text-slate-700";
                 if (flagged) {
-                  styleClass = "border-amber-400 bg-amber-100 text-amber-900 font-semibold";
+                  styleClass = "border-amber-400 bg-amber-100 text-amber-950 font-bold";
                 } else if (answered) {
-                  styleClass = "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold";
+                  styleClass = "border-emerald-500 bg-emerald-50 text-emerald-950 font-bold";
                 }
 
                 return (
                   <button
                     key={q.attemptQuestionId}
                     type="button"
-                    onClick={() => void switchQuestion(idx)}
-                    className={`flex h-11 items-center justify-center rounded-lg border text-sm ${styleClass} ${
-                      active ? "ring-2 ring-blue-700" : ""
-                    }`}
+                    onClick={() => {
+                      void switchQuestion(idx);
+                      setPaletteOpen(false);
+                    }}
+                    className={cn(
+                      "flex h-12 items-center justify-center rounded-xl border text-sm font-semibold transition-all select-none",
+                      styleClass,
+                      active ? "ring-2 ring-blue-700 ring-offset-1" : ""
+                    )}
                   >
                     {q.displayIndex}
                   </button>
@@ -1354,13 +1406,29 @@ export function ExamPlayerClient({
               })}
             </div>
 
+            {/* Legend */}
+            <div className="space-y-1.5 border-t border-slate-100 py-3 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded border border-emerald-500 bg-emerald-50" />
+                <span>Sudah dijawab</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded border border-amber-400 bg-amber-100" />
+                <span>Ditandai ragu-ragu</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded border border-slate-200 bg-white" />
+                <span>Belum dijawab</span>
+              </div>
+            </div>
+
             <Button
               type="button"
-              className="w-full"
+              className="w-full min-h-[44px]"
               disabled={navigatingToReview}
               onClick={() => void handleGoToReview()}
             >
-              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden="true" />
               <span>Tinjau Jawaban &amp; Kumpulkan</span>
             </Button>
           </div>

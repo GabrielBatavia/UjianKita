@@ -81,3 +81,16 @@ Built across `src/domain/monitoring/`, `src/services/monitoring-service.ts`, `sr
 - **Configurable, snapshot-locked security policies:** Teachers configure per-exam browser policies (`STANDARD_BROWSER_ALLOWED`, `SECURE_BROWSER_RECOMMENDED`, `VERIFIED_SEB_REQUIRED`), thresholds, watermark settings, and privacy notice (`exam_security_policies`). Publishing an exam triggers `trg_snapshot_security_policy_on_publish` to freeze an immutable `exam_security_policy_versions` row alongside `exam_versions`.
 - **Honest browser trust boundaries:** Android ExamBro (`com.dekikurnia.exambro`) QR launches and client hints are surfaced transparently as `unverified_client_hint` (`src/domain/monitoring/exambro-compat.ts`). Strong cryptographic enforcement (`VERIFIED_SEB_REQUIRED`) relies strictly on official Safe Exam Browser ConfigKey/RequestHash SHA-256 verification (`src/domain/monitoring/seb-verification.ts`) plus audited emergency staff overrides (`exam_student_browser_overrides`).
 - **Non-intrusive, fail-safe monitoring:** Student heartbeats (~30s jittered) update a compact single row (`attempt_monitoring_presence`), batched client visibility/reload/copy events flush via `sendBeacon()` / `fetch` (`<=25` events, `<=2KB` metadata, `clientEventId` dedupe), and monitoring RPC failures never block exam answer saves or final submission. Deduplicated security incidents require human review (`NEW -> UNDER_REVIEW -> ACKNOWLEDGED -> RESOLVED | DISMISSED`) and never mutate student scores.
+
+---
+
+## 6. Mobile-First Presentation & Design System Architecture (Implemented in Phase A)
+
+Following the postponement of Phase 7 (official deployment/onboarding), Phase A overhauled the entire presentation layer to establish a professional, accessible, mobile-first SaaS architecture:
+
+- **Mobile as Primary Environment:** Tested across 8 standardized device viewports (320px–1440px). All student and proctor interactions are optimized for thumb-reach ergonomics on personal Android (ExamBro) and iPhone (SEB) smartphones.
+- **Hardware Safe-Area Insets:** Standardized `viewportFit: "cover"` in Next.js viewport metadata and `pb-safe` / `pt-safe` CSS utilities in `src/app/globals.css`, ensuring zero clipping beneath iPhone Home Indicators, dynamic islands, or curved corner screens.
+- **Form Input Zoom Immunity:** Configured all form primitives (`Input`, `Textarea`, `Select`) with `text-base sm:text-sm` (strictly `16px` on mobile), permanently eliminating iOS Safari auto-zoom on field focus.
+- **Table-to-Card Responsive Pattern:** Wide relational data tables (5–8 columns) automatically transform into high-density, touch-friendly card lists on `< md` viewports across Question Bank, Teacher Monitoring Center, and Administrator rosters.
+- **Accessible Navigation Shells:** Implemented an accessible slide-over sheet drawer (`z-50`) with backdrop blur, focus lock, and `Escape` dismissal for teachers and admins, paired with a persistent, safe-area-padded 4-item bottom navigation bar for students.
+- **Design Token Discipline:** Strict semantic color tokens (WCAG AA compliant contrast ratios >= 4.5:1), universal 44px minimum tap targets, and standardized high-visibility `:focus-visible` outline rings.

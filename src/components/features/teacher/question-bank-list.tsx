@@ -268,96 +268,196 @@ export function QuestionBankList({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Pertanyaan &amp; Topik</TableHead>
-              <TableHead>Mapel &amp; Tipe</TableHead>
-              <TableHead>Kesulitan</TableHead>
-              <TableHead>Poin &amp; Versi</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile Question Cards View (< md) */}
+          <div className="space-y-3 md:hidden">
             {initialQuestions.map((q) => {
               const ver = q.current_version;
               const statusMeta = STATUS_LABELS[q.status];
               return (
-                <TableRow key={q.id}>
-                  <TableCell className="max-w-md">
-                    <div className="line-clamp-2 text-sm font-medium text-slate-900">
-                      {ver?.stem ?? "-"}
+                <div
+                  key={q.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-blue-700">
+                        {q.subject_name ?? "-"}
+                      </span>
+                      <p className="text-xs text-slate-500">{TYPE_LABELS[q.question_type]}</p>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                      {q.topic ? <span>Topik: {q.topic}</span> : null}
-                      {q.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="neutral" className="text-[10px] px-1.5 py-0">
-                          #{tag}
-                        </Badge>
-                      ))}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge variant="neutral" className="text-[10px]">
+                        {DIFFICULTY_LABELS[q.difficulty]}
+                      </Badge>
+                      <Badge variant={statusMeta.variant} className="text-[10px]">
+                        {statusMeta.label}
+                      </Badge>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div className="font-semibold text-slate-800">{q.subject_name ?? "-"}</div>
-                    <div className="text-slate-500">{TYPE_LABELS[q.question_type]}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="neutral">{DIFFICULTY_LABELS[q.difficulty]}</Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    <div>{ver?.points ?? 0} poin</div>
-                    <div className="text-slate-500">v{ver?.version_number ?? 1}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Pratinjau soal"
-                        onClick={() => setPreviewQuestion(q)}
-                      >
-                        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/teacher/questions/${q.id}`}>
-                          <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>Edit</span>
-                        </Link>
-                      </Button>
+                  </div>
+
+                  <div className="line-clamp-2 text-sm font-medium text-slate-900">
+                    {ver?.stem ?? "-"}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">{ver?.points ?? 0} poin</span>
+                    <span>•</span>
+                    <span>v{ver?.version_number ?? 1}</span>
+                    {q.topic ? (
+                      <>
+                        <span>•</span>
+                        <span className="truncate">Topik: {q.topic}</span>
+                      </>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-[40px] px-2.5"
+                      aria-label="Pratinjau soal"
+                      onClick={() => setPreviewQuestion(q)}
+                    >
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[40px] px-3 font-semibold"
+                    >
+                      <Link href={`/teacher/questions/${q.id}`}>
+                        <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Edit</span>
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[40px] px-2.5"
+                      disabled={busyId === q.id}
+                      aria-label="Duplikasi soal"
+                      onClick={() => handleDuplicate(q.id)}
+                    >
+                      <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                    {q.status !== "archived" ? (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="min-h-[40px] px-2.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                         disabled={busyId === q.id}
-                        aria-label="Duplikasi soal"
-                        onClick={() => handleDuplicate(q.id)}
+                        aria-label="Arsipkan soal"
+                        onClick={() => setArchiveTarget(q)}
                       >
-                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
-                      {q.status !== "archived" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={busyId === q.id}
-                          aria-label="Arsipkan soal"
-                          onClick={() => setArchiveTarget(q)}
-                        >
-                          <Archive className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    ) : null}
+                  </div>
+                </div>
               );
             })}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop Question Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pertanyaan &amp; Topik</TableHead>
+                  <TableHead>Mapel &amp; Tipe</TableHead>
+                  <TableHead>Kesulitan</TableHead>
+                  <TableHead>Poin &amp; Versi</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {initialQuestions.map((q) => {
+                  const ver = q.current_version;
+                  const statusMeta = STATUS_LABELS[q.status];
+                  return (
+                    <TableRow key={q.id}>
+                      <TableCell className="max-w-md">
+                        <div className="line-clamp-2 text-sm font-medium text-slate-900">
+                          {ver?.stem ?? "-"}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                          {q.topic ? <span>Topik: {q.topic}</span> : null}
+                          {q.tags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="neutral" className="text-[10px] px-1.5 py-0">
+                              #{tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-semibold text-slate-800">{q.subject_name ?? "-"}</div>
+                        <div className="text-slate-500">{TYPE_LABELS[q.question_type]}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">{DIFFICULTY_LABELS[q.difficulty]}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <div>{ver?.points ?? 0} poin</div>
+                        <div className="text-slate-500">v{ver?.version_number ?? 1}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Pratinjau soal"
+                            onClick={() => setPreviewQuestion(q)}
+                          >
+                            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/teacher/questions/${q.id}`}>
+                              <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>Edit</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busyId === q.id}
+                            aria-label="Duplikasi soal"
+                            onClick={() => handleDuplicate(q.id)}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                          {q.status !== "archived" ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={busyId === q.id}
+                              aria-label="Arsipkan soal"
+                              onClick={() => setArchiveTarget(q)}
+                            >
+                              <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {totalPages > 1 ? (
