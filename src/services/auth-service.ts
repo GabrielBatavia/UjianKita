@@ -1,7 +1,11 @@
-import type { AuthenticatedActor, Phase1RoleCode } from "@/domain/auth/types";
+import type {
+  AuthenticatedActor,
+  PermissionCode,
+  Phase1RoleCode,
+} from "@/domain/auth/types";
 import { getPublicEnvStatus } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasRole } from "@/policies/authorization";
+import { hasPermission, hasRole } from "@/policies/authorization";
 import { loadAuthenticatedActor } from "@/repositories/auth-repository";
 import { ServiceError } from "@/services/errors";
 
@@ -45,6 +49,16 @@ export async function requireAnyRoleActor(
   const actor = await requireAuthenticatedActor();
   if (!roles.some((r) => hasRole(actor.roles, r))) {
     throw new ServiceError(403, "FORBIDDEN", "Anda tidak memiliki izin untuk mengakses sumber daya ini.");
+  }
+  return actor;
+}
+
+export async function requirePermissionActor(
+  permission: PermissionCode
+): Promise<AuthenticatedActor> {
+  const actor = await requireAuthenticatedActor();
+  if (!actor.isActive || !hasPermission(actor.roles, permission)) {
+    throw new ServiceError(403, "FORBIDDEN", "Anda tidak memiliki izin untuk melakukan tindakan ini.");
   }
   return actor;
 }

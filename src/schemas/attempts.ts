@@ -48,7 +48,17 @@ export const submitAttemptSchema = z.object({
   confirmedUnansweredAck: z.boolean().optional().default(true),
 });
 
+export const telemetryMetadataSchema = z
+  .record(z.string().max(64), z.unknown())
+  .optional()
+  .default({})
+  .refine(
+    (obj) => Buffer.byteLength(JSON.stringify(obj), "utf8") <= 2048,
+    "Metadata peristiwa monitoring maksimal 2048 byte."
+  );
+
 export const clientTelemetryEventSchema = z.object({
+  clientEventId: z.string().trim().min(4).max(100).optional(),
   eventType: z.enum([
     "PAGE_HIDDEN",
     "PAGE_VISIBLE",
@@ -58,8 +68,18 @@ export const clientTelemetryEventSchema = z.object({
     "STORAGE_WARNING",
     "COPY_PASTE_ATTEMPT",
     "EXIT_ATTEMPT",
+    "EXAM_PAGE_VISIBLE",
+    "EXAM_PAGE_HIDDEN",
+    "EXAM_PAGE_RELOADED",
+    "EXAM_PAGE_NAVIGATION_OBSERVED",
+    "CONNECTION_RESTORED",
+    "COPY_EVENT_OBSERVED",
+    "PASTE_EVENT_OBSERVED",
+    "CONTEXT_MENU_EVENT_OBSERVED",
+    "EXAMBRO_HINT_REPORTED",
   ]),
-  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  occurredAt: z.string().datetime().optional(),
+  metadata: telemetryMetadataSchema,
 });
 
 export const manualEssayScoreEntrySchema = z.object({

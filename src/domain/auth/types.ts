@@ -30,6 +30,11 @@ export type PermissionCode =
   | "exams.oversight"
   | "exams.grade"
   | "exams.results.release"
+  | "monitoring.read"
+  | "monitoring.incidents.write"
+  | "monitoring.policies.write"
+  | "monitoring.oversight"
+  | "monitoring.reports.export"
   | "student.exams.read"
   | "student.attempts.write"
   | "student.results.read";

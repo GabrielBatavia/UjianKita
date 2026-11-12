@@ -35,6 +35,12 @@ import {
 } from "@/schemas/attempts";
 import type { RequestAuditContext } from "@/services/admin-service";
 import { ServiceError } from "@/services/errors";
+import { normalizeLegacyTelemetryEventType } from "@/domain/monitoring/phase4-types";
+import { startAttemptSecurityContextSchema } from "@/schemas/monitoring";
+import {
+  enforceBrowserPolicyOnExamAccess,
+  recordMonitoringEventsBatchService,
+} from "@/services/monitoring-service";
 
 export function computeAnswerPayloadHash(
   attemptQuestionId: string,
@@ -260,7 +266,12 @@ export async function startOrResumeStudentAttemptService(
   actor: AuthenticatedActor,
   examId: string,
   rawInput: unknown,
-  ctx: RequestAuditContext
+  ctx: RequestAuditContext,
+  securityOptions?: {
+    policyReaderSupabase?: SupabaseClient;
+    origin?: string;
+    headers?: Headers;
+  }
 ): Promise<{
   attemptId: string;
   created: boolean;
@@ -279,6 +290,30 @@ export async function startOrResumeStudentAttemptService(
     );
   }
 
+  let browserAccessDecision: Awaited<ReturnType<typeof enforceBrowserPolicyOnExamAccess>> | null =
+    null;
+  if (securityOptions?.headers && securityOptions.origin) {
+    const secInput = startAttemptSecurityContextSchema.safeParse(rawInput ?? {});
+    const secData = secInput.success ? secInput.data : undefined;
+    browserAccessDecision = await enforceBrowserPolicyOnExamAccess({
+      policyReaderSupabase: securityOptions.policyReaderSupabase ?? supabase,
+      examId,
+      schoolId: context.schoolId,
+      studentId: context.studentId,
+      origin: securityOptions.origin,
+      headers: securityOptions.headers,
+      sebProof: secData?.sebConfigKeyHash || secData?.sebBrowserExamKeyHash
+        ? {
+            pageUrl: secData.sebPageUrl,
+            configKeyHash: secData.sebConfigKeyHash,
+            browserExamKeyHash: secData.sebBrowserExamKeyHash,
+          }
+        : null,
+      browserPlatformHint: secData?.browserPlatformHint,
+      exambroHint: secData?.exambroHint,
+    });
+  }
+
   let result: Awaited<ReturnType<typeof callStartOrResumeAttemptRpc>>;
   try {
     result = await callStartOrResumeAttemptRpc(supabase, {
@@ -288,6 +323,39 @@ export async function startOrResumeStudentAttemptService(
     });
   } catch (error) {
     mapRpcError(error, "Gagal memulai sesi ujian.");
+  }
+
+  if (browserAccessDecision) {
+    try {
+      const reader = securityOptions?.policyReaderSupabase ?? supabase;
+      await reader
+        .from("exam_attempts")
+        .update({
+          browser_platform: browserAccessDecision.browserPlatform,
+          browser_trust_level: browserAccessDecision.trustLevel,
+          ...(browserAccessDecision.trustLevel === "verified_seb_header_and_key" ||
+          browserAccessDecision.trustLevel === "verified_seb_js_key"
+            ? { seb_verified_at_utc: new Date().toISOString() }
+            : {}),
+        })
+        .eq("id", result.attemptId);
+
+      await reader.from("attempt_monitoring_presence").upsert(
+        {
+          attempt_id: result.attemptId,
+          school_id: context.schoolId,
+          exam_id: examId,
+          student_id: context.studentId,
+          presence_state: "RECENTLY_SEEN",
+          last_heartbeat_at_utc: new Date().toISOString(),
+          browser_platform: browserAccessDecision.browserPlatform,
+          browser_trust_level: browserAccessDecision.trustLevel,
+        },
+        { onConflict: "attempt_id" }
+      );
+    } catch {
+      // Monitoring initialization failure must never abort exam start/resume
+    }
   }
 
   await recordAuditEvent(supabase, {
@@ -311,13 +379,31 @@ export async function startOrResumeStudentAttemptService(
 export async function getStudentAttemptWorkspaceService(
   supabase: SupabaseClient,
   actor: AuthenticatedActor,
-  attemptId: string
+  attemptId: string,
+  securityOptions?: {
+    policyReaderSupabase?: SupabaseClient;
+    origin?: string;
+    headers?: Headers;
+  }
 ): Promise<StudentAttemptWorkspacePayload> {
   const context = await requireActiveStudentContext(supabase, actor, "student.exams.read");
   const workspace = await fetchAttemptWorkspaceData(supabase, context.studentId, attemptId);
   if (!workspace) {
     throw new ServiceError(404, "ATTEMPT_NOT_FOUND", "Sesi ujian tidak ditemukan.");
   }
+
+  if (securityOptions?.headers && securityOptions.origin) {
+    await enforceBrowserPolicyOnExamAccess({
+      policyReaderSupabase: securityOptions.policyReaderSupabase ?? supabase,
+      examId: workspace.attempt.examId,
+      schoolId: context.schoolId,
+      studentId: context.studentId,
+      origin: securityOptions.origin,
+      headers: securityOptions.headers,
+      attemptIdIfExisting: workspace.attempt.id,
+    });
+  }
+
   return workspace;
 }
 
@@ -450,19 +536,42 @@ export async function recordStudentTelemetryEventService(
   supabase: SupabaseClient,
   actor: AuthenticatedActor,
   attemptId: string,
-  rawInput: unknown
-): Promise<{ recorded: boolean }> {
+  rawInput: unknown,
+  policyReaderSupabase?: SupabaseClient
+): Promise<{ recorded: boolean; accepted?: number; deduplicated?: number }> {
   const context = await requireActiveStudentContext(supabase, actor, "student.attempts.write");
   const parsed = clientTelemetryEventSchema.safeParse(rawInput);
   if (!parsed.success) {
-    throw new ServiceError(400, "VALIDATION_ERROR", "Jenis peristiwa telemetri tidak valid.");
+    throw new ServiceError(400, "VALIDATION_ERROR", "Jenis atau ukuran peristiwa telemetri tidak valid.");
+  }
+
+  const normalizedType = normalizeLegacyTelemetryEventType(parsed.data.eventType);
+
+  if (parsed.data.clientEventId) {
+    const res = await recordMonitoringEventsBatchService(
+      supabase,
+      policyReaderSupabase ?? supabase,
+      actor,
+      attemptId,
+      {
+        events: [
+          {
+            clientEventId: parsed.data.clientEventId,
+            eventType: normalizedType,
+            occurredAt: parsed.data.occurredAt,
+            metadata: parsed.data.metadata,
+          },
+        ],
+      }
+    );
+    return { recorded: true, accepted: res.accepted, deduplicated: res.deduplicated };
   }
 
   await insertClientTelemetryEvent(supabase, {
     schoolId: context.schoolId,
     attemptId,
     actorUserId: actor.userId,
-    eventType: parsed.data.eventType,
+    eventType: normalizedType,
     metadata: parsed.data.metadata,
   });
 

@@ -45,7 +45,17 @@ export type AuditAction =
   | "grading.finalized"
   | "grading.adjusted"
   | "results.released"
-  | "results.unpublished";
+  | "results.unpublished"
+  | "monitoring.policy_updated"
+  | "monitoring.policy_snapshotted"
+  | "monitoring.seb_config_updated"
+  | "monitoring.seb_verified"
+  | "monitoring.seb_verification_failed"
+  | "monitoring.incident_status_changed"
+  | "monitoring.incident_note_added"
+  | "monitoring.browser_override_granted"
+  | "monitoring.report_exported"
+  | "monitoring.retention_purged";
 
 export interface AuditEventInput {
   schoolId: string;
