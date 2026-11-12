@@ -16,6 +16,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
 
 interface VirtualStudentSession {
   cookie: string;
@@ -190,11 +191,14 @@ async function main() {
 
   const baseUrl = process.env.TARGET_BASE_URL;
   const examId = process.env.LOAD_TEST_EXAM_ID;
-  const tokensRaw = process.env.LOAD_TEST_TOKENS_JSON;
+  const tokensRaw =
+    process.env.LOAD_TEST_TOKENS_FILE && fs.existsSync(process.env.LOAD_TEST_TOKENS_FILE)
+      ? fs.readFileSync(process.env.LOAD_TEST_TOKENS_FILE, "utf8")
+      : process.env.LOAD_TEST_TOKENS_JSON;
 
   if (!baseUrl || !examId || !tokensRaw) {
     console.error(
-      "Missing TARGET_BASE_URL, LOAD_TEST_EXAM_ID, or LOAD_TEST_TOKENS_JSON environment variables."
+      "Missing TARGET_BASE_URL, LOAD_TEST_EXAM_ID, or LOAD_TEST_TOKENS_JSON/LOAD_TEST_TOKENS_FILE environment variables."
     );
     process.exit(1);
   }

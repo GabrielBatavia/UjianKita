@@ -12,7 +12,7 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
   - Server-authoritative RBAC (`admin`, `teacher`, `student`) and least-privilege PostgreSQL RLS migrations (`000001`–`000003`).
   - School academic CRUD (students, teachers, teacher assignments, classes, academic years, subjects, school settings, append-only audit log viewer).
   - Automated unit, API boundary, Playwright E2E/WCAG tests, GitHub Actions CI, and Vercel deployment configuration.
-- **Status:** Application code, Phase 1.5 tenant-integrity hardening migration (`000003`), unit tests, and Playwright checks pass offline; live Supabase & Vercel provisioning deferred to user cloud configuration.
+- **Status:** Migrations `000001`–`000010` and RLS policies/triggers verified live on local Docker Supabase (`supabase db reset` + Vitest integration suites). Cloud Supabase & Vercel provisioning deferred to user cloud configuration.
 
 ---
 
@@ -23,7 +23,7 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
   - Complete Examination Management workflow: draft builder (`exam_draft_questions`) with ordering, point overrides, and pinning; UTC class schedules & cross-exam overlap detection; optimistic concurrency (`version_lock`); readiness validation checklist; student-safe (`mode=student`) and teacher-review (`mode=teacher`) previews with responsive mobile (`390px`) / desktop inspection.
   - Immutable Examination Publishing & Revision Lifecycle (`DRAFT` -> `READY_FOR_REVIEW` -> `PUBLISHED` -> `CLOSED` / `ARCHIVED`, plus explicit `PUBLISHED -> DRAFT` revision via `start_exam_revision`) powered by `publish_exam_atomic`, producing frozen `exam_versions`, `exam_version_questions`, and isolated `exam_version_answer_keys` ready for Phase 3.
   - Administrator exam oversight (`/admin/exams`, `ADMIN_CLOSED`, `ADMIN_ARCHIVED`).
-- **Status:** Application code, SQL migrations `000004`–`000005`, offline Vitest suite, and Playwright E2E checks implemented and passing locally. **Live PostgreSQL execution of migrations `000003`–`000005` and live RLS policy tests require connecting a live Supabase/PostgreSQL instance.**
+- **Status:** Application code, SQL migrations `000004`–`000005` + `000010`, offline & live-DB Vitest suites, and Chromium/Pixel 7 Playwright E2E checks verified against local Supabase. Cloud deployment deferred.
 
 ---
 
@@ -37,7 +37,7 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
     - Dedicated review checklist (`/review`) separated from question navigation, transactional finalization (`_finalize_attempt_internal`), and immutable `SubmissionReceipt`.
   - Objective server-side grading (`_compute_and_upsert_exam_grade`), teacher manual essay grading workspace (`/teacher/grading`, `/teacher/exams/[id]/grading`), audited post-grading score adjustments (`grade_adjustments`), configurable result release policies (`manual`, `after_submit_if_no_essay`, `after_window_close`), and admin audited attempt cancellation (`cancel_exam_attempt_by_admin`).
   - Reproducible 100-student load test harness (`scripts/load-test-exam-engine.ts`).
-- **Remaining / Live Verification Needed:** Real PostgreSQL execution of `000006`–`000007` RPCs and RLS suites, real-device Android **ExamBro** & **Safe Exam Browser (SEB)** iOS ConfigKey/BrowserExamKey enforcement verification, live proctor room coordination (`exam_coordinator`, `proctor`, `auditor`), and executing the isolated load test benchmark.
+- **Status:** Migrations `000006`–`000007` + `000010` RPCs, RLS isolation, authenticated Playwright exam/grading/release flow, and 100-student local HTTP + PostgreSQL load drill verified locally. Real-device ExamBro/SEB verification and external proctor staffing workflows remain open prior to production launch.
 
 ---
 
@@ -49,13 +49,16 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
   - Publish-snapshotted configurable security policies (`exam_security_policies` -> `exam_security_policy_versions`), Android ExamBro (`com.dekikurnia.exambro`) scannable SVG QR & honest `unverified_client_hint` classification, and official Safe Exam Browser (SEB) ConfigKey (`SEB-JSON` SHA-256) + Request Hash (`SHA-256(normalizedUrl + keyHex)`) verification, `.seb` profile downloads, `sebs://` deep links, and audited emergency proctor overrides (`exam_student_browser_overrides`).
   - Non-accusatory deduplicated incident workflow (`NEW -> UNDER_REVIEW -> ACKNOWLEDGED -> RESOLVED | DISMISSED`) with zero automatic penalties, prompt-only watermark/copy/context guards, formula-safe CSV monitoring export with mandatory disclaimer, privacy disclosures (`docs/EXAM_MONITORING_PRIVACY.md`), and Admin telemetry retention purge.
   - SQL migrations `000008`–`000009` and 100-student monitoring load harness (`scripts/load-test-monitoring.ts`).
-- **Remaining / Live Verification Needed:** Live PostgreSQL apply & RLS/RPC verification across `000001`–`000009`, live Supabase Realtime WebSocket delivery under tenant load, physical Android ExamBro & iOS/macOS SEB handshake testing, and staging 100+ student load benchmarks.
+- **Status:** Migrations `000008`–`000009` + `000010`, heartbeat/event RPC ownership fixes, non-accusatory incident transitions, and 100-student monitoring HTTP + DB load drill verified locally. Physical Android ExamBro & iOS/macOS SEB hardware testing remains open.
 
 ---
 
-## Phase 5 — Distributed Operations, Live Load Drills, Pilot & High-Stakes Launch
+## Phase 5 — Local DB Integration, Hardening & Production Readiness
 
-- **Scope:**
-  - Centralized distributed rate limiting (Upstash/Redis) and structured observability ahead of multi-instance scaling.
-  - Capacity and burst stress testing against live staging (200+ concurrent virtual students across login, heartbeats, telemetry batches, autosaves, and simultaneous submissions).
-  - Live PostgreSQL backup/PITR restoration drills, controlled school pilot with real ExamBro/SEB hardware, MFA enforcement for staff, and formal Go / No-Go release sign-off before official school examinations.
+- **Completed in Repository / Local Supabase:**
+  - Live local Supabase PostgreSQL execution across all 10 migrations (`000001`–`000010`) via `supabase db reset`, fixing 3 live DB issues (`BUG-01`, `BUG-02`, `BUG-03`) in migration `000010` and fixing a Node 22 SSR `navigator.onLine` hydration mismatch (`#418`) in `ExamPlayerClient`.
+  - All 21 Vitest files / 92 tests (`RUN_LIVE_DB_TESTS=true`), 24 Playwright Chromium + Pixel 7 E2E/WCAG checks (authenticated + unauthenticated), `pg_dump` / `pg_restore` schema + checksum verification, and 100-concurrent-student exam & monitoring load benchmarks verified cleanly on local Docker Supabase.
+- **Remaining Before Official High-Stakes Production Launch (`docs/PRODUCTION_READINESS_GAPS.md`):**
+  - Centralized distributed rate limiting (Upstash/Redis) ahead of multi-instance serverless scaling and shared school Wi-Fi NAT cohort login capacity planning.
+  - External cloud Supabase Pro (managed PITR backups) & Vercel Pro provisioning.
+  - Controlled school pilot on physical Android ExamBro & iOS/macOS Safe Exam Browser hardware, TOTP MFA enforcement for staff, and formal Go / No-Go sign-off.

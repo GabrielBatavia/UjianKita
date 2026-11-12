@@ -74,6 +74,25 @@ function hasFilledAnswer(response: StudentResponsePayload | null): boolean {
   return response.textAnswer.trim().length > 0;
 }
 
+function subscribeBrowserOnline(onStoreChange: () => void): () => void {
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+}
+
+function getBrowserOnlineSnapshot(): boolean {
+  return typeof navigator !== "undefined" && typeof navigator.onLine === "boolean"
+    ? navigator.onLine
+    : true;
+}
+
+function getBrowserOnlineServerSnapshot(): boolean {
+  return true;
+}
+
 export function ExamPlayerClient({
   initialWorkspace,
   securityPolicy = null,
@@ -106,9 +125,13 @@ export function ExamPlayerClient({
   const [currentIdx, setCurrentIdx] = React.useState<number>(0);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
 
-  const [isOnline, setIsOnline] = React.useState<boolean>(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine
+  const browserOnline = React.useSyncExternalStore(
+    subscribeBrowserOnline,
+    getBrowserOnlineSnapshot,
+    getBrowserOnlineServerSnapshot
   );
+  const [fetchOffline, setFetchOffline] = React.useState(false);
+  const isOnline = browserOnline && !fetchOffline;
   const [storageWarning, setStorageWarning] = React.useState<string | null>(null);
   const [pendingDrafts, setPendingDrafts] = React.useState<Record<string, PendingAnswerQueueItem>>(
     {}
@@ -176,6 +199,7 @@ export function ExamPlayerClient({
           res.ok &&
           (data.outcome === "COMMITTED" || data.outcome === "IDEMPOTENT_REPLAY")
         ) {
+          setFetchOffline(false);
           setHasFailedSave(false);
           setSyncErrorMsg(null);
 
@@ -251,7 +275,9 @@ export function ExamPlayerClient({
         return false;
       } catch {
         // Transient offline / network disconnect
-        setIsOnline(typeof navigator !== "undefined" ? navigator.onLine : false);
+        if (typeof navigator === "undefined" || navigator.onLine === false) {
+          setFetchOffline(true);
+        }
         return false;
       } finally {
         setInFlightCount((c) => Math.max(0, c - 1));
@@ -334,7 +360,7 @@ export function ExamPlayerClient({
   // Network connectivity listeners + auto reconnect flush
   React.useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true);
+      setFetchOffline(false);
       void fetch(`/api/student/attempts/${attemptId}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -343,7 +369,7 @@ export function ExamPlayerClient({
       void flushPendingQueue();
     };
     const handleOffline = () => {
-      setIsOnline(false);
+      setFetchOffline(true);
     };
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);

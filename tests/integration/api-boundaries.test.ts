@@ -7,6 +7,13 @@ import { GET as getAdminStudents, POST as postAdminStudent } from "@/app/api/adm
 import { PATCH as patchAdminSettings } from "@/app/api/admin/settings/route";
 import { resetRateLimitForTests } from "@/lib/rate-limit";
 
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    getAll: () => [],
+    set: () => {},
+  }),
+}));
+
 describe("API Route Handler Security & Authorization Boundaries", () => {
   afterEach(() => {
     vi.restoreAllMocks();

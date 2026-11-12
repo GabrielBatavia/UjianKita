@@ -17,15 +17,13 @@ This document explains how to deploy **UjianKita** with **Supabase** (PostgreSQL
 ## 2. Supabase Setup
 
 1. **Create or select a dedicated Supabase project** (separate projects are recommended for staging/preview vs. production).
-2. **Apply Phase 1 SQL migrations** in order:
+2. **Apply all SQL migrations (`000001`–`000010`)** in order (for local Docker workflows see [`docs/LOCAL_SUPABASE_SETUP.md`](LOCAL_SUPABASE_SETUP.md)):
    - Using Supabase CLI:
      ```bash
-     npx supabase link --project-ref <your-project-ref>
-     npx supabase db push
+     supabase link --project-ref <your-project-ref>
+     supabase db push
      ```
-   - Or via the Supabase SQL Editor, execute:
-     1. `supabase/migrations/20261112000001_phase1_foundation_schema.sql`
-     2. `supabase/migrations/20261112000002_phase1_rls_and_functions.sql`
+   - Or via the Supabase SQL Editor, execute `supabase/migrations/20261112000001_phase1_foundation_schema.sql` through `supabase/migrations/20261112000010_phase5_security_and_rpc_hardening.sql` sequentially.
 3. **Configure Authentication settings** in Supabase Dashboard (`Authentication -> URL Configuration` and `Providers -> Email`):
    - Disable open self-signups (`Enable Sign-ups = OFF`).
    - Add your Vercel preview/production URLs and `http://localhost:3000/auth/callback` to **Redirect URLs**.

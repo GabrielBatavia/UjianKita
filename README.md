@@ -2,8 +2,8 @@
 
 **UjianKita** is a web-first Computer-Based Testing (CBT) platform designed for official school examinations on students' personal Android phones (via **ExamBro**) and iPhones (via **Safe Exam Browser / SEB**), paired with web workspaces for school administrators and teachers.
 
-> **Current Stage — Phase 4 (Examination Security, Browser Integration & Real-Time Monitoring):**
-> This repository extends Phases 1–3 with the Phase 4 examination security & real-time proctoring control center (`/teacher/monitoring`, `/admin/monitoring`, student presence heartbeats, bounded/deduplicated `attempt_events` batching, deduplicated non-accusatory security incidents, Android ExamBro SVG QR compatibility, official Safe Exam Browser ConfigKey/RequestHash cryptographic verification, prompt-only watermark & copy/context guards, retention cleanup, CSV exports, and SQL migrations `000008`–`000009`). **Note:** Live cloud Supabase/Vercel provisioning, live PostgreSQL execution of migrations `000001`–`000009`, Supabase Realtime live tenant broadcast verification, physical Android ExamBro / iOS SEB hardware testing, and isolated 100-student database load benchmarks remain pending; **UjianKita must not be represented as ready for official high-stakes examinations until live DB verification, concurrency load testing, and real-device ExamBro/SEB verification are completed.**
+> **Current Stage — Phase 5 (Local Database Integration, End-to-End Verification & Reliability Hardening):**
+> Phases 1–5 deliver the complete Next.js 16 + Supabase PostgreSQL CBT application across migrations `000001`–`000010`, including Question Bank, Examination Builder & immutable `exam_versions`, authoritative student attempt/autosave/submission/receipt engine, automated + manual grading with audited adjustments, Phase 4 examination security & real-time proctoring control centers, and Phase 5 local Supabase live integration verification (`supabase db reset`, RLS & concurrency invariants, `pg_dump`/`pg_restore` drill, authenticated Chromium/Pixel 7 E2E workflows, and 100-concurrent-student HTTP + PostgreSQL load benchmarks). **Note:** Cloud Supabase/Vercel provisioning, distributed rate-limiting (`enforceApiRateLimit`/`enforceActorRateLimit` in-memory vs Redis/Upstash across multi-instance serverless workers), staff TOTP MFA enforcement, physical Android ExamBro / iOS Safe Exam Browser hardware testing, and Windows WebKit Playwright execution (`exitCode=3221225501` missing host DLLs; covered in Ubuntu CI) remain open before live official school launch; see [`docs/PRODUCTION_READINESS_GAPS.md`](docs/PRODUCTION_READINESS_GAPS.md).
 
 ---
 
@@ -63,6 +63,7 @@ Apply the SQL migrations in `supabase/migrations/` in chronological order:
 7. `20261112000007_phase3_rls_and_attempt_rpcs.sql`
 8. `20261112000008_phase4_security_monitoring_schema.sql`
 9. `20261112000009_phase4_rls_and_monitoring_rpcs.sql`
+10. `20261112000010_phase5_security_and_rpc_hardening.sql`
 
 For non-production local testing, you may also run `supabase/seed.sql` or execute `npx tsx scripts/bootstrap-synthetic-school.ts` against a non-production Supabase instance to provision isolated synthetic test accounts.
 
@@ -105,7 +106,14 @@ npm run test:e2e
 - [`docs/SEB_INTEGRATION.md`](docs/SEB_INTEGRATION.md) — Official Safe Exam Browser ConfigKey/RequestHash SHA-256 verification, `.seb` config & `sebs://` deep links
 - [`docs/SECURITY_INCIDENT_WORKFLOW.md`](docs/SECURITY_INCIDENT_WORKFLOW.md) — Non-accusatory deduplicated incidents, manual review transitions & CSV exports
 - [`docs/EXAM_MONITORING_PRIVACY.md`](docs/EXAM_MONITORING_PRIVACY.md) — Data minimization, 2KB telemetry bounds, privacy disclosure & Admin retention cleanup
-- [`docs/PHASE4_VERIFICATION.md`](docs/PHASE4_VERIFICATION.md) — Phase 4 honest verification report (verified offline vs pending live DB/Realtime/hardware)
+- [`docs/PHASE4_VERIFICATION.md`](docs/PHASE4_VERIFICATION.md) — Phase 4 honest verification report (historical Phase 4 offline baseline)
+- [`docs/PHASE5_INTEGRATION_REPORT.md`](docs/PHASE5_INTEGRATION_REPORT.md) — Phase 5 executive verification report (live local Supabase, E2E, load & recovery)
+- [`docs/LOCAL_SUPABASE_SETUP.md`](docs/LOCAL_SUPABASE_SETUP.md) — Reproducible local Docker Supabase CLI setup, reset & test workflow
+- [`docs/END_TO_END_EXAM_VERIFICATION.md`](docs/END_TO_END_EXAM_VERIFICATION.md) — Authenticated Playwright E2E + WCAG verification across student/teacher flows
+- [`docs/DATABASE_SECURITY_AUDIT.md`](docs/DATABASE_SECURITY_AUDIT.md) — Live PostgreSQL RLS, RBAC boundary audit & Phase 5 fixes (`000010`)
+- [`docs/CONCURRENCY_TEST_RESULTS.md`](docs/CONCURRENCY_TEST_RESULTS.md) — 100-concurrent-student exam & monitoring HTTP + PostgreSQL load benchmarks
+- [`docs/BACKUP_RECOVERY_TEST.md`](docs/BACKUP_RECOVERY_TEST.md) — Verified `pg_dump` / `pg_restore` schema, RLS, function & checksum parity drill
+- [`docs/PRODUCTION_READINESS_GAPS.md`](docs/PRODUCTION_READINESS_GAPS.md) — Honest remaining infrastructure, browser hardware, and scale gaps
 - [`docs/SECURITY.md`](docs/SECURITY.md) — Authorization, secret/answer-key boundaries, XSS/formula safety, and OWASP alignment
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Supabase & Vercel setup, environment rules, plan limits
 - [`docs/TESTING.md`](docs/TESTING.md) — Unit, API/service-boundary, live RLS, and Playwright E2E/WCAG testing

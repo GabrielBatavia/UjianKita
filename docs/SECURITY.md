@@ -10,7 +10,7 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 - **No self-registration:** `enable_signup` is disabled; administrators provision staff and student accounts.
 - **Safe authentication errors:** Login and password-reset endpoints return generic, non-enumerating messages in Bahasa Indonesia (`src/lib/security.ts`).
 - **Open-redirect defense:** `sanitizeInternalRedirectPath()` rejects external URLs, protocol-relative URLs (`//`), and backslash escapes in `?next=` parameters.
-- **Rate limiting:** Login, password recovery, administrative mutations, and student exam endpoints apply sliding-window throttling (`src/lib/rate-limit.ts`) returning `429` with `Retry-After`. Student and teacher grading APIs use per-user buckets (`enforceActorRateLimit()` in `src/lib/api-helpers.ts`) so ~100 NAT students sharing a school Wi-Fi IP do not exhaust each other's quotas. *(Note: Phase 1–3 use per-instance in-memory buckets; Phase 4 adds a distributed store for multi-instance global consistency.)*
+- **Rate limiting:** Login, password recovery, administrative mutations, and student exam endpoints apply sliding-window throttling (`src/lib/rate-limit.ts`) returning `429` with `Retry-After`. Student and teacher grading APIs use per-user buckets (`enforceActorRateLimit()` in `src/lib/api-helpers.ts`) so ~100 NAT students sharing a school Wi-Fi IP do not exhaust each other's quotas. *Important operational caveat:* `POST /api/auth/login` also enforces a per-IP bucket (`auth:login:ip`, limit `15` per `5` minutes) alongside per-email throttling (`8` per `5` minutes), and `src/lib/rate-limit.ts` uses per-instance in-memory state — see `docs/PRODUCTION_READINESS_GAPS.md` regarding staggered cohort login behind a shared school NAT IP and distributed store replacement ahead of multi-instance serverless scaling.
 
 ---
 
@@ -62,10 +62,11 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 
 ---
 
-## 6. Planned Hardening Before Official High-Stakes Exams (Phase 5)
+## 6. Phase 5 Verification Summary & Remaining Hardening Before High-Stakes Launch
 
-- Enable MFA (TOTP) enforcement for Administrator, Exam Coordinator, and Teacher accounts.
-- Upgrade rate limiting to a distributed store (Supabase or Upstash) ahead of multi-instance scaling.
-- Execute live PostgreSQL verification of migrations `000001`–`000009`, RLS isolation, Supabase Realtime delivery, and concurrent RPC safety against a real database instance.
-- Validate real-device ExamBro Android & SEB iOS ConfigKey / BrowserExamKey handshake flows on physical hardware before enforcing lockdown-only exams.
-- Conduct an independent OWASP ASVS verification pass and full 200+ concurrent virtual-student staging load drill prior to high-stakes launch.
+- **Completed in Phase 5 (Local PostgreSQL):** Verified all 10 migrations (`000001`–`000010`), patched `options_snapshot` randomization alignment (`start_or_resume_exam_attempt`), `auth_student_id() IS NULL` ownership checks (`record_attempt_heartbeat_atomic`, `record_monitoring_events_batch_atomic`), and read-only `auditor` vs `proctor`/`exam_coordinator` write separation (`auth_can_write_exam_monitoring`) in migration `000010`; see `docs/DATABASE_SECURITY_AUDIT.md`.
+- **Remaining before official high-stakes exams:**
+  - Enable MFA (TOTP) enforcement for Administrator, Exam Coordinator, and Teacher accounts.
+  - Upgrade `src/lib/rate-limit.ts` to a distributed store (e.g., Upstash Redis) ahead of multi-instance scaling and size/stagger login IP budgets for shared school Wi-Fi NAT gateways.
+  - Validate real-device ExamBro Android & SEB iOS ConfigKey / BrowserExamKey handshake flows on physical hardware before enforcing lockdown-only exams.
+  - Complete external cloud Supabase/Vercel provisioning (including managed PITR backups) and independent penetration testing ahead of live school rollout.

@@ -39,46 +39,46 @@ UjianKita separates **offline verification** (domain unit tests, schema validati
 - `phase3-exam-engine.test.ts`:
   - **Offline Route Boundary Tests:** Verifies unauthenticated callers fail closed (`401`/`503`) on all Phase 3 student, grading, release, and admin cancel endpoints, and verifies HTTP mapping for `SaveAckOutcome` (`200` `COMMITTED`, `409` `STALE_REVISION_REJECTED`, `410` `DEADLINE_EXPIRED`, `403` `ATTEMPT_CANCELLED`) with `Cache-Control: no-store`.
   - **Offline Mocked Service-Boundary Tests:** Verifies non-student rejection, unpublished/expired eligibility fail-closed checks, order-independent canonical hash computation for `multiple_choice`, audit deduplication on submit replay, subject ownership on grading, mandatory adjustment reasons, and admin-only attempt cancellation.
-  - **Live Supabase PostgreSQL RLS & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Automatically skipped when `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and `TEST_SUPABASE_SERVICE_ROLE_KEY` are unset. Must be executed against a real PostgreSQL / Supabase instance before declaring end-to-end DB readiness.
+  - **Live Supabase PostgreSQL RLS & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Executed cleanly against local Docker Supabase when `RUN_LIVE_DB_TESTS=true` (`test`/`TEST_SUPABASE_*` or `.env.local`).
 - `phase4-monitoring-api.test.ts`:
   - **Offline Mocked Service-Boundary Tests:** Verifies zero SEB ConfigKey/BEK hash exposure to students, `VERIFIED_SEB_REQUIRED` blocking on attempt start & workspace load even under spoofed SEB/ExamBro `User-Agent` headers, valid SHA-256 request-hash & active emergency override access, bounded telemetry metadata/batch validation, fail-safe answer saves & submissions independent of monitoring RPCs, and role permission boundaries across heartbeats, batched events, incident review transitions, overrides, and Admin retention purge.
-  - **Live PostgreSQL & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Automatically skipped unless `RUN_LIVE_DB_TESTS=true` and live Supabase env vars are configured to verify `000001`–`000009`.
+  - **Live PostgreSQL & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Verified against live local Supabase (`000001`–`000010`).
+- **Phase 5 Dedicated Live-DB Integration Suites (`tests/integration/phase5-rls-and-cross-school.test.ts` & `tests/integration/phase5-e2e-concurrency-invariants.test.ts`) + Unit Suite (`tests/unit/phase5-seb-and-grading-vectors.test.ts`):**
+  - Verifies cross-school RLS isolation, `auditor` read-only vs `proctor`/`exam_coordinator` write enforcement (`000010`), `auth_student_id() IS NULL` ownership checks, snake_case option randomization, parallel attempt start uniqueness, stale revision rejection, expired deadline finalization (`finalize_expired_exam_attempts`), incident deduplication, and monitoring/grade decoupling. All **21 files / 92 tests** pass when `RUN_LIVE_DB_TESTS=true`.
 
 ---
 
 ## 3. Running Live Database Integration & Load Tests (Non-Production Only)
 
-Provide isolated test-project environment variables (`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`) after applying migrations `000001` through `000009`:
+Provide isolated local or test-project environment variables (`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`, or `.env.local` for local Supabase) after applying migrations `000001` through `000010`:
 
 ```bash
-TEST_SUPABASE_URL=... TEST_SUPABASE_ANON_KEY=... TEST_SUPABASE_SERVICE_ROLE_KEY=... npm run test
+RUN_LIVE_DB_TESTS=true npm run test
 ```
 
-If local Docker is available, run `npx supabase start` and apply `supabase/migrations/` locally rather than touching production databases.
-
-To verify the ~100-student Phase 3 exam engine harness (`scripts/load-test-exam-engine.ts`) or Phase 4 monitoring concurrency harness (`scripts/load-test-monitoring.ts --dry-run`):
+See [`docs/LOCAL_SUPABASE_SETUP.md`](LOCAL_SUPABASE_SETUP.md) for local Docker Supabase CLI commands (`supabase start`, `supabase db reset`). Note: both load harnesses support `LOAD_TEST_TOKENS_FILE` / `LOAD_TEST_SESSIONS_FILE` in addition to `*_JSON` env vars to avoid Windows 32 KB `CreateProcess` environment block limits across 100+ session cookies:
 
 ```bash
 npx tsx scripts/load-test-monitoring.ts --dry-run
 ```
 
-For an isolated staging benchmark:
+For an isolated staging or local 100-student benchmark:
 
 ```bash
 LOAD_TEST_CONFIRM_ISOLATED=true \
-TARGET_BASE_URL=http://127.0.0.1:3000 \
+TARGET_BASE_URL=http://127.0.0.1:3100 \
 LOAD_TEST_EXAM_ID=<exam-uuid> \
-LOAD_TEST_TOKENS_JSON='[{"cookie":"sb-..."}]' \
+LOAD_TEST_TOKENS_FILE=/path/to/tokens.json \
 npx tsx scripts/load-test-exam-engine.ts
 ```
 
 ---
 
-## 4. Playwright Browser & Accessibility Matrix (`foundation.spec.ts`, `phase3-exam-flow.spec.ts` & `phase4-monitoring.spec.ts`)
+## 4. Playwright Browser & Accessibility Matrix (`foundation.spec.ts`, `phase3-exam-flow.spec.ts`, `phase4-monitoring.spec.ts` & `phase5-authenticated-workflows.spec.ts`)
 
-Runs across 3 browser projects against `npm run build` via `npm run test:e2e` (`playwright.config.ts`):
+Runs across 3 configured browser projects against `npm run build` via `npm run test:e2e` (`playwright.config.ts`):
 1. **`desktop-chromium`**
 2. **`mobile-android`** (`Pixel 7`)
-3. **`mobile-iphone`** (`iPhone 13` WebKit)
+3. **`mobile-iphone`** (`iPhone 13` WebKit — executed on Linux/Ubuntu CI runners; fails at launch on Windows hosts missing system WebKit DLL dependencies with `exitCode=3221225501`)
 
-Verifies security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`), `Cache-Control: no-store` on student/grading/monitoring APIs, zero horizontal overflow across desktop and mobile (`390x844`) viewports, fail-closed redirects to `/login` across Phases 1–4 portals (`/teacher/grading/*`, `/teacher/monitoring/*`, `/admin/monitoring/*`, `/student/exams/*`, `/student/attempts/*`, `/student/results`), fail-closed API responses, zero uncaught `pageerror` exceptions, and zero WCAG 2.2 AA `@axe-core/playwright` violations. *(Note: Playwright Pixel 7 and iPhone 13 profiles emulate responsive WebKit/Chromium viewports and do not substitute for physical ExamBro APK or SEB iOS/macOS WebView hardware verification.)*
+Verifies security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`), `Cache-Control: no-store` on student/grading/monitoring APIs, zero horizontal overflow across desktop and mobile (`390x844`) viewports, fail-closed redirects to `/login`, fail-closed API responses, authenticated student exam -> reload resume -> essay blur -> review -> submit receipt -> teacher manual grading & release -> live monitoring flows (`phase5-authenticated-workflows.spec.ts`, auto-enabled when `.env.local` / Supabase env is present, skipped cleanly in DB-less CI), zero uncaught `pageerror` exceptions, and zero WCAG 2.2 AA `@axe-core/playwright` violations. *(Note: Playwright Pixel 7 and iPhone 13 profiles emulate responsive WebKit/Chromium viewports and do not substitute for physical ExamBro APK or SEB iOS/macOS WebView hardware verification.)*

@@ -73,7 +73,21 @@ export function canonicalizeSebJson(value: unknown): string {
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj)
-      .filter((key) => obj[key] !== undefined)
+      .filter((key) => {
+        const val = obj[key];
+        if (val === undefined) return false;
+        // Per SEB Config Key specification, empty dictionaries are omitted recursively.
+        if (
+          val !== null &&
+          typeof val === "object" &&
+          !Array.isArray(val) &&
+          !(val instanceof Date) &&
+          canonicalizeSebJson(val) === "{}"
+        ) {
+          return false;
+        }
+        return true;
+      })
       .sort(compareOrdinal);
     const entries = keys.map(
       (key) => `${JSON.stringify(key)}:${canonicalizeSebJson(obj[key])}`
