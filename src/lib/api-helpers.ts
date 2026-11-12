@@ -50,9 +50,47 @@ export function enforceApiRateLimit(
   return null;
 }
 
+export function noStoreJson(data: unknown, init?: number | ResponseInit): NextResponse {
+  const responseInit: ResponseInit =
+    typeof init === "number" ? { status: init } : { ...(init ?? {}) };
+  const headers = new Headers(responseInit.headers);
+  headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  headers.set("Pragma", "no-cache");
+  return NextResponse.json(data, { ...responseInit, headers });
+}
+
+export function enforceActorRateLimit(
+  scope: string,
+  actorUserId: string,
+  limit = 120,
+  windowMs = 60_000
+): NextResponse | null {
+  const result = checkRateLimit({
+    key: `${scope}:actor:${actorUserId}`,
+    limit,
+    windowMs,
+  });
+
+  if (!result.allowed) {
+    return noStoreJson(
+      {
+        error: "Terlalu banyak permintaan dalam waktu singkat. Silakan coba beberapa saat lagi.",
+        code: "RATE_LIMITED",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(result.retryAfterSeconds),
+        },
+      }
+    );
+  }
+  return null;
+}
+
 export function handleApiError(error: unknown): NextResponse {
   if (isServiceError(error)) {
-    return NextResponse.json(
+    return noStoreJson(
       {
         error: error.message,
         code: error.code,
@@ -62,7 +100,7 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   console.error("[api] unhandled route error:", error);
-  return NextResponse.json(
+  return noStoreJson(
     {
       error: "Terjadi kesalahan pada layanan server. Silakan coba lagi.",
       code: "INTERNAL_ERROR",

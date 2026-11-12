@@ -8,6 +8,7 @@ import type {
   ExamStatus,
   ExamVersionSummary,
   QuestionType,
+  ResultReleasePolicy,
   ScoringPolicy,
   StudentExamPreviewPayload,
   TeacherExamReviewPayload,
@@ -33,6 +34,10 @@ interface RawExamRow {
   ends_at: string | null;
   published_version_id: string | null;
   version_lock: number;
+  result_release_policy?: ResultReleasePolicy;
+  results_released_at?: string | null;
+  results_released_by?: string | null;
+  allow_student_review?: boolean;
   created_at: string;
   updated_at: string;
   subject?: { code?: string; name?: string } | Array<{ code?: string; name?: string }> | null;
@@ -85,6 +90,10 @@ function mapExamRow(raw: RawExamRow): ExamRecord {
     ends_at: raw.ends_at ?? null,
     published_version_id: raw.published_version_id ?? null,
     version_lock: raw.version_lock,
+    result_release_policy: raw.result_release_policy ?? "manual",
+    results_released_at: raw.results_released_at ?? null,
+    results_released_by: raw.results_released_by ?? null,
+    allow_student_review: Boolean(raw.allow_student_review ?? false),
     question_count: draftQs.length,
     total_points: totalPoints,
     assigned_class_count: Array.isArray(raw.assignments) ? raw.assignments.length : 0,

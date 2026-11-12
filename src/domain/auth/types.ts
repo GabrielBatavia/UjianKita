@@ -27,7 +27,12 @@ export type PermissionCode =
   | "exams.read"
   | "exams.write"
   | "exams.publish"
-  | "exams.oversight";
+  | "exams.oversight"
+  | "exams.grade"
+  | "exams.results.release"
+  | "student.exams.read"
+  | "student.attempts.write"
+  | "student.results.read";
 
 export interface AuthenticatedActor {
   userId: string;

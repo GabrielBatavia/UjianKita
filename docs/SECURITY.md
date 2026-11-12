@@ -10,7 +10,7 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 - **No self-registration:** `enable_signup` is disabled; administrators provision staff and student accounts.
 - **Safe authentication errors:** Login and password-reset endpoints return generic, non-enumerating messages in Bahasa Indonesia (`src/lib/security.ts`).
 - **Open-redirect defense:** `sanitizeInternalRedirectPath()` rejects external URLs, protocol-relative URLs (`//`), and backslash escapes in `?next=` parameters.
-- **Rate limiting:** Login, password recovery, and administrative write routes apply sliding-window throttling (`src/lib/rate-limit.ts`) returning `429` with `Retry-After`. *(Note: Phase 1 uses per-instance in-memory buckets; Phase 2 should introduce centralized rate limiting for multi-lambda global consistency.)*
+- **Rate limiting:** Login, password recovery, administrative mutations, and student exam endpoints apply sliding-window throttling (`src/lib/rate-limit.ts`) returning `429` with `Retry-After`. Student and teacher grading APIs use per-user buckets (`enforceActorRateLimit()` in `src/lib/api-helpers.ts`) so ~100 NAT students sharing a school Wi-Fi IP do not exhaust each other's quotas. *(Note: Phase 1–3 use per-instance in-memory buckets; Phase 4 adds a distributed store for multi-instance global consistency.)*
 
 ---
 
@@ -20,9 +20,9 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 - **Tenant & ownership boundaries:**
   - `schools`, `academic_years`, `classes`, `subjects`, `students`, `teachers`, `audit_events`, `question_banks`, `questions`, `question_versions`, `question_options`, `question_answer_keys`, `exams`, `exam_versions`, `exam_version_questions`, and `exam_version_answer_keys` are strictly scoped by `school_id`.
   - Phase 1.5 database triggers (`trg_enforce_same_school_classes`, `trg_enforce_same_school_enrollments`, `trg_enforce_same_school_teacher_assignments`) block cross-school foreign-key linking even under elevated clients.
-  - Teachers can access and edit bank questions and draft exams **only** for subjects actively assigned to them (`auth_teacher_teaches_subject`, `auth_can_access_subject_content`, `auth_can_manage_exam`) and assign/schedule exams **only** for classes they teach or homeroom.
-  - Students can read **only** their own `students` row and their own active `class_enrollments`, and have **zero** RLS read policies or API routes accessing `question_answer_keys`, `exam_version_answer_keys`, question banks, or exam drafts.
-  - Only `admin` users of the same school can mutate school records, exercise `exams.oversight`, or read `audit_events`.
+  - Teachers can access, edit, and grade bank questions, draft exams, and student attempts **only** for subjects actively assigned to them (`auth_teacher_teaches_subject`, `auth_can_access_subject_content`, `auth_can_manage_exam`, `auth_teacher_can_grade_attempt`) and assign/schedule exams **only** for classes they teach or homeroom.
+  - Students can read **only** their own `students` row, their own active `class_enrollments`, `PUBLISHED`/`CLOSED` assigned exams (`auth_student_can_access_exam`), their own `exam_attempts`/`attempt_question_assignments`/`student_answers`/`submission_receipts`, and `exam_grades` explicitly marked `release_status = 'RELEASED'`. Students have **zero** RLS read policies or API routes accessing `question_answer_keys`, `exam_version_answer_keys`, `exam_version_questions`, explanations, grading rubrics, or exam drafts.
+  - Only `admin` users of the same school can mutate school records, exercise `exams.oversight`, cancel active student attempts (`cancel_exam_attempt_by_admin`), or read `audit_events`.
 - **Dual enforcement:** Authorization is checked both in Next.js server services (`src/policies/authorization.ts`) and natively inside PostgreSQL RLS policies.
 
 ---
@@ -31,7 +31,7 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 
 - `SUPABASE_SERVICE_ROLE_KEY` is guarded in `src/lib/env.ts` (`typeof window !== "undefined"` throws) and `src/lib/supabase/admin.ts`, and is never prefixed with `NEXT_PUBLIC_`.
 - `.env*` local secret files are excluded in `.gitignore`.
-- `next.config.ts` sets baseline security headers across all routes:
+- `next.config.ts` sets baseline security headers across all routes (and Phase 3 student/grading API handlers also emit `Cache-Control: no-store, no-cache, must-revalidate, private` via `noStoreJson()`):
   - `Content-Security-Policy` (`frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`)
   - `X-Frame-Options: DENY`
   - `X-Content-Type-Options: nosniff`
@@ -52,9 +52,10 @@ UjianKita applies defense-in-depth aligned with OWASP ASVS principles and the Te
 
 ---
 
-## 5. Planned Hardening Before Official High-Stakes Exams (Phase 3–4)
+## 5. Planned Hardening Before Official High-Stakes Exams (Phase 4)
 
 - Enable MFA (TOTP) enforcement for Administrator, Exam Coordinator, and Teacher accounts.
-- Upgrade rate limiting to a distributed store (Supabase or Upstash) ahead of ~100 simultaneous login bursts.
-- Enforce live RLS policies and isolated attempt/submission RPCs once Phase 3 delivery tables (`exam_attempts`, `student_answers`, `submission_receipts`) are deployed.
+- Upgrade rate limiting to a distributed store (Supabase or Upstash) ahead of multi-instance scaling.
+- Execute live PostgreSQL verification of migrations `000001`–`000007`, RLS isolation, and concurrent RPC safety against a real database instance.
+- Validate real-device ExamBro Android & SEB iOS ConfigKey / BrowserExamKey enforcement before enforcing lockdown-only exams.
 - Conduct an independent OWASP ASVS verification pass prior to high-stakes launch.

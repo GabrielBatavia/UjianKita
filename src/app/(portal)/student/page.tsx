@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, ClipboardList, History, School, Smartphone } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  ClipboardList,
+  History,
+  PlayCircle,
+  School,
+  Smartphone,
+} from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listStudentAvailableExamsService } from "@/services/attempt-service";
 import { requireRoleActor } from "@/services/auth-service";
 import { getStudentPortal } from "@/services/student-service";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Beranda Siswa",
@@ -21,12 +36,51 @@ export default async function StudentDashboardPage() {
   const supabase = await createSupabaseServerClient();
   const portal = await getStudentPortal(supabase, actor);
 
+  let availableCount = 0;
+  let activeAttemptExam: { examId: string; title: string; attemptId: string } | null = null;
+  let completedCount = 0;
+
+  if (portal.activeClass) {
+    try {
+      const catalog = await listStudentAvailableExamsService(supabase, actor);
+      availableCount = catalog.items.filter((i) => i.canStart).length;
+      completedCount = catalog.items.filter((i) => i.canViewReceipt).length;
+      const inProgress = catalog.items.find((i) => i.canResume && i.activeAttemptId);
+      if (inProgress && inProgress.activeAttemptId) {
+        activeAttemptExam = {
+          examId: inProgress.examId,
+          title: inProgress.title,
+          attemptId: inProgress.activeAttemptId,
+        };
+      }
+    } catch {
+      // Gracefully render academic card even when exam data cannot load
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         title={`Halo, ${actor.fullName}`}
         description={`${actor.schoolName} • Portal Siswa UjianKita`}
       />
+
+      {activeAttemptExam ? (
+        <Alert variant="warning" title="Anda Memiliki Sesi Ujian Berlangsung">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              Sesi ujian <strong>{activeAttemptExam.title}</strong> masih aktif dan waktunya terus
+              berjalan di server.
+            </span>
+            <Button asChild size="sm">
+              <Link href={`/student/attempts/${activeAttemptExam.attemptId}`}>
+                <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                <span>Lanjutkan Ujian Sekarang</span>
+              </Link>
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
 
       {/* Student Active Class Card */}
       <Card>
@@ -85,23 +139,25 @@ export default async function StudentDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Quick Mobile-First Links to Upcoming Sections */}
+      {/* Quick Mobile-First Links */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <ClipboardList className="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <Badge variant="warning">Fase 2</Badge>
+              <Badge variant={availableCount > 0 ? "success" : "neutral"}>
+                {availableCount} Tersedia
+              </Badge>
             </div>
-            <CardTitle className="mt-2">Jadwal Ujian Mendatang</CardTitle>
+            <CardTitle className="mt-2">Daftar Ujian Kelas</CardTitle>
             <CardDescription>
-              Daftar ujian yang dijadwalkan untuk kelas Anda akan tampil di sini pada Fase 2.
+              Lihat jadwal ujian, baca petunjuk pengerjaan, mulai atau lanjutkan sesi ujian resmi.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full justify-between">
               <Link href="/student/exams">
-                <span>Lihat Detail Jadwal Ujian</span>
+                <span>Buka Daftar Ujian</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -112,18 +168,17 @@ export default async function StudentDashboardPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <History className="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <Badge variant="warning">Fase 2</Badge>
+              <Badge variant="neutral">{completedCount} Selesai</Badge>
             </div>
-            <CardTitle className="mt-2">Riwayat &amp; Bukti Ujian</CardTitle>
+            <CardTitle className="mt-2">Hasil &amp; Bukti Pengumpulan</CardTitle>
             <CardDescription>
-              Bukti pengumpulan resmi dan nilai yang telah dirilis guru akan tersedia di sini pada
-              Fase 2.
+              Lihat bukti pengumpulan ujian resmi dan pantau nilai yang telah dirilis guru.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full justify-between">
-              <Link href="/student/history">
-                <span>Lihat Riwayat Ujian</span>
+              <Link href="/student/results">
+                <span>Lihat Hasil &amp; Bukti</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -136,9 +191,9 @@ export default async function StudentDashboardPage() {
         <span className="inline-flex items-start gap-2">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            Untuk ujian resmi pada fase berikutnya, sekolah akan menetapkan penggunaan aplikasi
-            peramban ujian yang disetujui (<strong>ExamBro</strong> pada Android atau{" "}
-            <strong>Safe Exam Browser</strong> pada iPhone/iPad).
+            Untuk ujian resmi sekolah, gunakan aplikasi peramban ujian yang direkomendasikan (
+            <strong>ExamBro</strong> pada Android atau <strong>Safe Exam Browser</strong> pada
+            iPhone/iPad/desktop) bila disyaratkan pada jadwal.
           </span>
         </span>
       </Alert>

@@ -8,6 +8,8 @@ export type ScoringPolicy = "exact_match" | "partial_credit_disabled" | "manual_
 
 export type ExamStatus = "DRAFT" | "READY_FOR_REVIEW" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
 
+export type ResultReleasePolicy = "manual" | "after_submit_if_no_essay" | "after_window_close";
+
 export interface QuestionOptionItem {
   optionKey: string;
   optionText: string;
@@ -100,6 +102,10 @@ export interface ExamRecord {
   ends_at: string | null;
   published_version_id: string | null;
   version_lock: number;
+  result_release_policy?: ResultReleasePolicy;
+  results_released_at?: string | null;
+  results_released_by?: string | null;
+  allow_student_review?: boolean;
   question_count?: number;
   total_points?: number;
   assigned_class_count?: number;
