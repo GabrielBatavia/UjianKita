@@ -36,7 +36,7 @@ test.describe("UjianKita Phase 1 Foundation E2E", () => {
       supabase: { configured: boolean; reachable: boolean };
     };
     expect(data.service).toBe("ujiankita-web");
-    expect(data.phase).toBe("phase-1");
+    expect(data.phase).toBe("phase-6");
     expect(typeof data.supabase.configured).toBe("boolean");
   });
 

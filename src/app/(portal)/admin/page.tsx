@@ -15,7 +15,6 @@ import { getAdminOverview } from "@/services/admin-service";
 import { requireRoleActor } from "@/services/auth-service";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
-import { UpcomingModuleCard } from "@/components/layout/upcoming-module-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -141,16 +140,42 @@ export default async function AdminOverviewPage() {
           </CardContent>
         </Card>
 
-        <UpcomingModuleCard
-          title="Modul Ujian & Pemantauan"
-          phaseLabel="Fase 2 & Fase 3"
-          description="Fitur inti pelaksanaan ujian belum diaktifkan pada Fase 1 dan sedang dipersiapkan di atas fondasi ini."
-          plannedCapabilities={[
-            "Persetujuan versi ujian yang tidak dapat diubah diam-diam setelah dimulai.",
-            "Pemantauan sesi ujian langsung (~100 peserta serentak) tanpa menentukan pelanggaran otomatis dari satu sinyal.",
-            "Ekspor hasil nilai resmi dan audit penyesuaian nilai.",
-          ]}
-        />
+        <Card className="border-slate-200 bg-white">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Modul Ujian, Keamanan &amp; Pemantauan</CardTitle>
+              <Badge variant="success">Aktif</Badge>
+            </div>
+            <CardDescription>
+              Pengelolaan ujian sekolah, kebijakan peramban aman (SEB/ExamBro), pemantauan langsung,
+              serta audit nilai sudah tersedia untuk digunakan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-slate-700">
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Snapshot publikasi ujian yang tidak dapat diubah diam-diam setelah dimulai.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Pemantauan sesi ujian langsung (~100 peserta serentak) dengan klasifikasi sinyal berbasis bukti.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Koreksi objektif/esai, rilis nilai terkontrol, dan jejak audit penyesuaian nilai.</span>
+              </li>
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/exams">Pantau Ujian</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/monitoring">Dasbor Pengawasan</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

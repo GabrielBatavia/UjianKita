@@ -10,7 +10,7 @@ export async function getSystemHealthReport(): Promise<HealthCheckReport> {
     return {
       status: "degraded",
       service: "ujiankita-web",
-      phase: "phase-1",
+      phase: "phase-6",
       timestampUtc,
       supabase: {
         configured: false,
@@ -30,7 +30,7 @@ export async function getSystemHealthReport(): Promise<HealthCheckReport> {
       return {
         status: "degraded",
         service: "ujiankita-web",
-        phase: "phase-1",
+        phase: "phase-6",
         timestampUtc,
         supabase: {
           configured: true,
@@ -44,7 +44,7 @@ export async function getSystemHealthReport(): Promise<HealthCheckReport> {
     return {
       status: "healthy",
       service: "ujiankita-web",
-      phase: "phase-1",
+      phase: "phase-6",
       timestampUtc,
       supabase: {
         configured: true,
@@ -57,7 +57,7 @@ export async function getSystemHealthReport(): Promise<HealthCheckReport> {
     return {
       status: "degraded",
       service: "ujiankita-web",
-      phase: "phase-1",
+      phase: "phase-6",
       timestampUtc,
       supabase: {
         configured: true,

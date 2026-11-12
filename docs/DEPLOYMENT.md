@@ -9,29 +9,29 @@ This document explains how to deploy **UjianKita** with **Supabase** (PostgreSQL
 > **Important — Vercel Plan Notice:**
 > Vercel Hobby may be used only for eligible development, personal testing, and non-commercial evaluation. **Do not assume Vercel Hobby is authorized or sized for operating an official production school examination service.** Prior to operating real school examinations (~100 simultaneous students), evaluate Vercel Pro (or equivalent commercial hosting) alongside Supabase Pro (for automated Point-in-Time Recovery, daily backups, and compute sizing).
 
-> **Phase 1 Readiness Notice:**
-> A publicly deployed Phase 1 instance provides foundation authentication and academic administration only. **Do not represent a Phase 1 deployment as ready for official school examinations.**
+> **Preview vs Production Environment Isolation:**
+> Never configure `SUPABASE_SERVICE_ROLE_KEY` in untrusted wildcard preview branches. Restrict sensitive Preview environment variables to trusted integration branches (e.g., `--git-branch feat/phase-6-cloud-integration`), and configure Production environment variables explicitly for `https://ujiankita-three.vercel.app` (or your school's custom domain).
 
 ---
 
 ## 2. Supabase Setup
 
 1. **Create or select a dedicated Supabase project** (separate projects are recommended for staging/preview vs. production).
-2. **Apply all SQL migrations (`000001`–`000010`)** in order (for local Docker workflows see [`docs/LOCAL_SUPABASE_SETUP.md`](LOCAL_SUPABASE_SETUP.md)):
+2. **Apply all SQL migrations (`000001`–`000011`)** in order (for local Docker workflows see [`docs/LOCAL_SUPABASE_SETUP.md`](LOCAL_SUPABASE_SETUP.md)):
    - Using Supabase CLI:
      ```bash
      supabase link --project-ref <your-project-ref>
-     supabase db push
+     supabase db push --remote
      ```
-   - Or via the Supabase SQL Editor, execute `supabase/migrations/20261112000001_phase1_foundation_schema.sql` through `supabase/migrations/20261112000010_phase5_security_and_rpc_hardening.sql` sequentially.
+   - Or via the Supabase SQL Editor, execute `supabase/migrations/20261112000001_phase1_foundation_schema.sql` through `supabase/migrations/20261112000011_phase6_distributed_rate_limiting.sql` sequentially.
+   - **Important:** Never run `supabase db reset --linked` or push `supabase/seed.sql` to a live production project. Also avoid pushing the full local `supabase/config.toml` blindly if remote PostgreSQL major versions differ (local `15` vs hosted `17`); apply targeted Auth settings instead.
 3. **Configure Authentication settings** in Supabase Dashboard (`Authentication -> URL Configuration` and `Providers -> Email`):
-   - Disable open self-signups (`Enable Sign-ups = OFF`).
-   - Add your Vercel preview/production URLs and `http://localhost:3000/auth/callback` to **Redirect URLs**.
-   - Set **Site URL** to your primary deployment URL (e.g., `https://ujian-kita.vercel.app`).
-4. **Provision Initial Synthetic/Seed School & First Admin** (for staging/dev):
-   - Run `supabase/seed.sql` only in non-production environments to seed `SMAN1-SIMULASI`, academic year `2026/2027`, and sample subjects.
-   - Create the first Administrator user in Supabase Authentication (`Users -> Add User`), then link their `user_profiles` row and `user_roles` (`admin`) row to the school ID.
-   - Never use real student personal records in development or preview environments.
+   - Disable open self-signups (`Enable Sign-ups = OFF` / `enable_signup = false`) so accounts are created strictly by school administrators.
+   - Add your canonical production URL (`https://ujiankita-three.vercel.app/auth/callback`, `/reset-password`), trusted preview callback URLs, and optional local dev callback URLs to **Redirect URLs**.
+   - Set **Site URL** to your primary deployment URL (e.g., `https://ujiankita-three.vercel.app`).
+4. **Provision Initial School & First Admin**:
+   - Use `supabase/seed.sql` only in non-production local/staging environments to seed `SMAN1-SIMULASI`, academic year `2026/2027`, and sample subjects.
+   - In Production, create the school record + first Administrator user cleanly, link `user_profiles` and `user_roles` (`admin`), and immediately verify `/api/health` returns `status: "healthy"` with HTTP `200`.
 
 ---
 

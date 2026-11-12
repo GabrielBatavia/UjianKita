@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
-import { enforceApiRateLimit, parseJsonBody } from "@/lib/api-helpers";
+import {
+  buildRateLimitResponse,
+  enforceDistributedIpRateLimit,
+  parseJsonBody,
+} from "@/lib/api-helpers";
 import { getAppUrl, getPublicEnvStatus } from "@/lib/env";
+import { checkDistributedRateLimit, hashRateLimitIdentifier } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { forgotPasswordSchema } from "@/schemas/auth";
 
 export async function POST(request: Request) {
-  const rateBlocked = enforceApiRateLimit(request, "auth:forgot-password", 6, 10 * 60_000);
-  if (rateBlocked) return rateBlocked;
+  const { blocked: ipBlocked } = await enforceDistributedIpRateLimit({
+    request,
+    scope: "auth:forgot-password",
+    limit: 30,
+    windowMs: 10 * 60_000,
+  });
+  if (ipBlocked) return ipBlocked;
 
   const envStatus = getPublicEnvStatus();
   if (!envStatus.configured) {
@@ -31,11 +41,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const emailNormalized = parsed.data.email.toLowerCase();
+  const emailLimit = await checkDistributedRateLimit({
+    key: `auth:forgot-password:email:${hashRateLimitIdentifier(emailNormalized)}`,
+    limit: 4,
+    windowMs: 10 * 60_000,
+  });
+  if (!emailLimit.allowed) {
+    return buildRateLimitResponse(emailLimit.retryAfterSeconds);
+  }
+
   const supabase = await createSupabaseServerClient();
   const redirectTo = `${getAppUrl()}/auth/callback?next=/reset-password`;
 
   // Always return a generic success response to avoid email enumeration
-  await supabase.auth.resetPasswordForEmail(parsed.data.email.toLowerCase(), {
+  await supabase.auth.resetPasswordForEmail(emailNormalized, {
     redirectTo,
   });
 

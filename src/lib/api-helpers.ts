@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  checkDistributedRateLimit,
+  checkRateLimit,
+  hashRateLimitIdentifier,
+} from "@/lib/rate-limit";
 import { extractClientIp, extractUserAgent } from "@/lib/security";
 import { isServiceError } from "@/services/errors";
 import type { RequestAuditContext } from "@/services/admin-service";
@@ -20,6 +24,22 @@ export async function parseJsonBody(request: Request): Promise<unknown> {
   }
 }
 
+export function buildRateLimitResponse(retryAfterSeconds: number, message?: string): NextResponse {
+  return noStoreJson(
+    {
+      error:
+        message ?? "Terlalu banyak permintaan dalam waktu singkat. Silakan coba beberapa saat lagi.",
+      code: "RATE_LIMITED",
+    },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.max(1, retryAfterSeconds)),
+      },
+    }
+  );
+}
+
 export function enforceApiRateLimit(
   request: Request,
   scope: string,
@@ -34,20 +54,36 @@ export function enforceApiRateLimit(
   });
 
   if (!result.allowed) {
-    return NextResponse.json(
-      {
-        error: "Terlalu banyak permintaan dalam waktu singkat. Silakan coba beberapa saat lagi.",
-        code: "RATE_LIMITED",
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(result.retryAfterSeconds),
-        },
-      }
-    );
+    return buildRateLimitResponse(result.retryAfterSeconds);
   }
   return null;
+}
+
+export async function enforceDistributedIpRateLimit(params: {
+  request: Request;
+  scope: string;
+  limit: number;
+  windowMs: number;
+  increment?: boolean;
+  message?: string;
+}): Promise<{ blocked: NextResponse | null; ipKeyHash: string }> {
+  const ip = extractClientIp(params.request) ?? "unknown";
+  const ipKeyHash = hashRateLimitIdentifier(ip);
+  const result = await checkDistributedRateLimit({
+    key: `${params.scope}:ip:${ipKeyHash}`,
+    limit: params.limit,
+    windowMs: params.windowMs,
+    increment: params.increment,
+  });
+
+  if (!result.allowed) {
+    return {
+      blocked: buildRateLimitResponse(result.retryAfterSeconds, params.message),
+      ipKeyHash,
+    };
+  }
+
+  return { blocked: null, ipKeyHash };
 }
 
 export function noStoreJson(data: unknown, init?: number | ResponseInit): NextResponse {

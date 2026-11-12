@@ -14,7 +14,7 @@ This guide documents how to run **UjianKita** against an isolated **local Docker
 
 ---
 
-## 2. Start Local Supabase & Apply Migrations (`000001`–`000010`)
+## 2. Start Local Supabase & Apply Migrations (`000001`–`000011`)
 
 From the repository root (`D:\UjianKita`):
 
@@ -31,7 +31,7 @@ Active local service endpoints:
 - **PostgreSQL (`psql`):** `127.0.0.1:54322` (`postgres` database)
 - **Supabase Containers:** `supabase_db_ujiankita`, `supabase_auth_ujiankita`, `supabase_rest_ujiankita`, `supabase_kong_ujiankita`, `supabase_realtime_ujiankita`, `supabase_inbucket_ujiankita`
 
-To cleanly recreate the database, apply all 10 migrations (`supabase/migrations/20261112000001`–`20261112000010`), and load `supabase/seed.sql`:
+To cleanly recreate the database, apply all 11 migrations (`supabase/migrations/20261112000001`–`20261112000011`), and load `supabase/seed.sql`:
 
 ```powershell
 & "$env:LOCALAPPDATA\supabase\bin\supabase.exe" db reset
@@ -60,8 +60,12 @@ Copy `.env.example` to `.env.local` (`.env.local` is ignored by Git) and populat
 npm run lint
 npm run typecheck
 
-# 2. All Vitest unit + live PostgreSQL RLS/RPC integration suites (21 files, 92 tests)
+# 2. All Vitest unit + live PostgreSQL RLS/RPC integration suites (22 files, 96 tests)
+# Set TEST_SUPABASE_* alongside NEXT_PUBLIC_SUPABASE_* / SUPABASE_SERVICE_ROLE_KEY so all 96 tests execute with 0 skips:
 $env:RUN_LIVE_DB_TESTS = "true"
+$env:TEST_SUPABASE_URL = $env:NEXT_PUBLIC_SUPABASE_URL
+$env:TEST_SUPABASE_ANON_KEY = $env:NEXT_PUBLIC_SUPABASE_ANON_KEY
+$env:TEST_SUPABASE_SERVICE_ROLE_KEY = $env:SUPABASE_SERVICE_ROLE_KEY
 npm run test
 
 # 3. Production Next.js build + Chromium/Pixel 7 Playwright E2E suite (24 tests)
