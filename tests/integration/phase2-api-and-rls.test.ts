@@ -21,6 +21,13 @@ import {
   validateExamForReviewService,
 } from "@/services/exam-service";
 
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    getAll: () => [],
+    set: () => {},
+  }),
+}));
+
 describe("Phase 2 API Route Handler Authorization & Security Projection", () => {
   afterEach(() => {
     vi.restoreAllMocks();

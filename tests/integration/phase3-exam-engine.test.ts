@@ -35,6 +35,13 @@ import {
   releaseExamResultsService,
 } from "@/services/grading-service";
 
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    getAll: () => [],
+    set: () => {},
+  }),
+}));
+
 function makeActor(
   roles: [Phase1RoleCode, ...Phase1RoleCode[]],
   schoolId = randomUUID()
@@ -610,10 +617,12 @@ describe.skipIf(!hasLiveSupabase)(
           .select("id")
           .eq("code", roleCode)
           .single();
-        await service.from("user_roles").insert({
+        const { error: roleInsertErr } = await service.from("user_roles").insert({
           user_id: uData.user.id,
           role_id: rRow!.id,
+          school_id: schoolId,
         });
+        expect(roleInsertErr).toBeNull();
         return { userId: uData.user.id, email };
       }
 
@@ -692,20 +701,26 @@ describe.skipIf(!hasLiveSupabase)(
           title: "Bank Uji Fase 3",
         });
 
-        const teacherClient = createClient(liveUrl!, liveAnon!);
-        await teacherClient.auth.signInWithPassword({
+        const teacherClient = createClient(liveUrl!, liveAnon!, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const teacherSignIn = await teacherClient.auth.signInWithPassword({
           email: teacherUser.email,
           password: credential,
         });
+        expect(teacherSignIn.error).toBeNull();
 
         // Create 1 MCQ (20 pts) + 1 Essay (30 pts) & publish exam
         const qMcq = await teacherClient.rpc("create_question_with_version", {
-          p_bank_id: bankId,
+          p_question_bank_id: bankId,
           p_subject_id: subjectId,
           p_question_type: "single_choice",
           p_difficulty: "easy",
           p_topic: "Kinematika",
           p_tags: [],
+          p_status: "active",
+          p_attachment_metadata: [],
+          p_content_fingerprint: `p3-mcq-${suffix}`,
           p_stem: "Satuan SI kecepatan adalah?",
           p_explanation: "RAHASIA_PENJELASAN",
           p_points: 20,
@@ -718,14 +733,18 @@ describe.skipIf(!hasLiveSupabase)(
           ],
           p_correct_option_keys: ["A"],
         });
+        expect(qMcq.error).toBeNull();
 
         const qEssay = await teacherClient.rpc("create_question_with_version", {
-          p_bank_id: bankId,
+          p_question_bank_id: bankId,
           p_subject_id: subjectId,
           p_question_type: "essay",
           p_difficulty: "medium",
           p_topic: "Hukum Newton",
           p_tags: [],
+          p_status: "active",
+          p_attachment_metadata: [],
+          p_content_fingerprint: `p3-essay-${suffix}`,
           p_stem: "Jelaskan Hukum I Newton.",
           p_explanation: null,
           p_points: 30,
@@ -735,9 +754,10 @@ describe.skipIf(!hasLiveSupabase)(
           p_options: [],
           p_correct_option_keys: [],
         });
+        expect(qEssay.error).toBeNull();
 
         const nowMs = Date.now();
-        const { data: examRow } = await teacherClient
+        const { data: examRow, error: examInsertErr } = await teacherClient
           .from("exams")
           .insert({
             school_id: schoolId,
@@ -748,7 +768,7 @@ describe.skipIf(!hasLiveSupabase)(
             status: "DRAFT",
             duration_minutes: 60,
             max_attempts: 1,
-            passing_score: 70,
+            passing_score: 35,
             randomize_questions: true,
             randomize_options: true,
             result_release_policy: "manual",
@@ -757,10 +777,21 @@ describe.skipIf(!hasLiveSupabase)(
           })
           .select("id")
           .single();
+        expect(examInsertErr).toBeNull();
 
         await teacherClient.from("exam_draft_questions").insert([
-          { school_id: schoolId, exam_id: examRow!.id, question_id: qMcq.data.questionId, display_order: 1 },
-          { school_id: schoolId, exam_id: examRow!.id, question_id: qEssay.data.questionId, display_order: 2 },
+          {
+            school_id: schoolId,
+            exam_id: examRow!.id,
+            question_id: (qMcq.data as { question_id: string }).question_id,
+            display_order: 1,
+          },
+          {
+            school_id: schoolId,
+            exam_id: examRow!.id,
+            question_id: (qEssay.data as { question_id: string }).question_id,
+            display_order: 2,
+          },
         ]);
         await teacherClient.from("exam_assignments").insert({
           school_id: schoolId,
@@ -778,17 +809,21 @@ describe.skipIf(!hasLiveSupabase)(
           max_attempts: 1,
           late_join_minutes: 30,
         });
-        await teacherClient.rpc("publish_exam_atomic", {
+        const pubRes = await teacherClient.rpc("publish_exam_atomic", {
           p_exam_id: examRow!.id,
           p_expected_version_lock: 1,
           p_notes: "Live P3 test",
         });
+        expect(pubRes.error).toBeNull();
 
-        const studentClient = createClient(liveUrl!, liveAnon!);
-        await studentClient.auth.signInWithPassword({
+        const studentClient = createClient(liveUrl!, liveAnon!, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const studentSignIn = await studentClient.auth.signInWithPassword({
           email: studentUser.email,
           password: credential,
         });
+        expect(studentSignIn.error).toBeNull();
 
         // Verify RLS denies direct read of exam_version_questions & exam_version_answer_keys
         const { data: leakedKeys } = await studentClient

@@ -367,7 +367,7 @@ export async function recordSebVerificationOutcome(
     .maybeSingle();
 
   if (!attempt) {
-    await supabase.from("monitoring_audit_events").insert({
+    const { error: auditErr } = await supabase.from("monitoring_audit_events").insert({
       school_id: params.schoolId,
       exam_id: params.examId,
       actor_user_id: params.actorUserId,
@@ -381,12 +381,15 @@ export async function recordSebVerificationOutcome(
         trustLevel: params.trustLevel,
       },
     });
+    if (auditErr) {
+      throw new Error(`Gagal mencatat audit SEB: ${auditErr.message}`);
+    }
     return { attemptId: null };
   }
 
   const attemptId = String((attempt as { id: string }).id);
   if (params.verified) {
-    await supabase
+    const { error: attemptUpdateErr } = await supabase
       .from("exam_attempts")
       .update({
         browser_platform: "IOS_SAFE_EXAM_BROWSER",
@@ -394,17 +397,23 @@ export async function recordSebVerificationOutcome(
         seb_verified_at_utc: nowIso,
       })
       .eq("id", attemptId);
+    if (attemptUpdateErr) {
+      throw new Error(`Gagal memperbarui status SEB percobaan: ${attemptUpdateErr.message}`);
+    }
 
-    await supabase
+    const { error: presenceUpdateErr } = await supabase
       .from("attempt_monitoring_presence")
       .update({
         browser_platform: "IOS_SAFE_EXAM_BROWSER",
         browser_trust_level: params.trustLevel,
       })
       .eq("attempt_id", attemptId);
+    if (presenceUpdateErr) {
+      throw new Error(`Gagal memperbarui presensi SEB percobaan: ${presenceUpdateErr.message}`);
+    }
   }
 
-  await supabase.from("attempt_events").insert({
+  const { error: eventErr } = await supabase.from("attempt_events").insert({
     school_id: params.schoolId,
     attempt_id: attemptId,
     actor_user_id: params.actorUserId,
@@ -419,6 +428,9 @@ export async function recordSebVerificationOutcome(
       reason: params.reason,
     },
   });
+  if (eventErr) {
+    throw new Error(`Gagal mencatat event verifikasi SEB: ${eventErr.message}`);
+  }
 
   return { attemptId };
 }

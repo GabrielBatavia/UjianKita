@@ -1,12 +1,38 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+const isLocalHttpApp =
+  appUrl.startsWith("http://127.0.0.1") || appUrl.startsWith("http://localhost");
+const allowHttpLocalhost = isDev || isLocalHttpApp;
 
-const supabaseConnectTargets = [
-  "https://*.supabase.co",
-  "wss://*.supabase.co",
-  ...(isDev ? ["http://127.0.0.1:54321", "http://localhost:54321", "ws://127.0.0.1:54321"] : []),
-];
+function buildConfiguredSupabaseOrigins(): string[] {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!rawUrl) return [];
+  try {
+    const parsed = new URL(rawUrl);
+    const wsProtocol = parsed.protocol === "https:" ? "wss:" : "ws:";
+    return [parsed.origin, `${wsProtocol}//${parsed.host}`];
+  } catch {
+    return [];
+  }
+}
+
+const supabaseConnectTargets = Array.from(
+  new Set([
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    ...buildConfiguredSupabaseOrigins(),
+    ...(allowHttpLocalhost
+      ? [
+          "http://127.0.0.1:54321",
+          "http://localhost:54321",
+          "ws://127.0.0.1:54321",
+          "ws://localhost:54321",
+        ]
+      : []),
+  ])
+);
 
 const cspDirectives = [
   "default-src 'self'",
@@ -19,7 +45,7 @@ const cspDirectives = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(allowHttpLocalhost ? [] : ["upgrade-insecure-requests"]),
 ];
 
 const securityHeaders = [
@@ -47,7 +73,7 @@ const securityHeaders = [
     key: "X-DNS-Prefetch-Control",
     value: "off",
   },
-  ...(isDev
+  ...(allowHttpLocalhost
     ? []
     : [
         {
@@ -60,6 +86,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  experimental: {
+    cpus: Number(process.env.NEXT_BUILD_CPUS || 2),
+    memoryBasedWorkersCount: true,
+  },
   async headers() {
     return [
       {
