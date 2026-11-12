@@ -7,7 +7,6 @@ import { listExamsService } from "@/services/exam-service";
 import { listQuestionsService } from "@/services/question-bank-service";
 import { getTeacherWorkspace } from "@/services/teacher-service";
 import { PageHeader } from "@/components/layout/page-header";
-import { UpcomingModuleCard } from "@/components/layout/upcoming-module-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,16 +145,42 @@ export default async function TeacherOverviewPage() {
           </CardContent>
         </Card>
 
-        <UpcomingModuleCard
-          title="Pelaksanaan Siswa, Pemantauan & Penilaian"
-          phaseLabel="Segera Hadir — Fase 3"
-          description="Bank soal dan penerbitan snapshot ujian telah aktif di Fase 2. Pengerjaan oleh siswa dan pemantauan langsung akan dibuka pada Fase 3."
-          plannedCapabilities={[
-            "Mesin pengerjaan ujian siswa dengan penyimpanan idempoten dan pengatur waktu server.",
-            "Dasbor pengawasan langsung (heartbeat & garis waktu kejadian berbasis bukti).",
-            "Koreksi otomatis objektif, penilaian rubrik esai, dan rilis nilai resmi.",
-          ]}
-        />
+        <Card className="border-slate-200 bg-white">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Pelaksanaan, Pemantauan &amp; Penilaian</CardTitle>
+              <Badge variant="success">Aktif</Badge>
+            </div>
+            <CardDescription>
+              Seluruh modul pengajaran—bank soal terversi, snapshot ujian, pengawasan langsung,
+              dan koreksi nilai—siap digunakan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-slate-700">
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Mesin pengerjaan ujian siswa dengan autosave idempoten dan pengatur waktu server.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Dasbor pengawasan langsung (heartbeat, status koneksi, &amp; pengecualian peramban teraudit).</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                <span>Koreksi otomatis objektif, penilaian rubrik esai, dan rilis nilai resmi.</span>
+              </li>
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/teacher/monitoring">Pengawasan Ujian</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/teacher/grading">Koreksi &amp; Nilai</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

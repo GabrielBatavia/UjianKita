@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
-import { enforceApiRateLimit, parseJsonBody, buildAuditContext } from "@/lib/api-helpers";
+import {
+  buildAuditContext,
+  buildRateLimitResponse,
+  enforceDistributedIpRateLimit,
+  parseJsonBody,
+} from "@/lib/api-helpers";
 import { getPublicEnvStatus } from "@/lib/env";
-import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  checkDistributedRateLimit,
+  hashRateLimitIdentifier,
+  resetDistributedRateLimit,
+} from "@/lib/rate-limit";
 import { mapAuthErrorToSafeMessage, sanitizeInternalRedirectPath } from "@/lib/security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDefaultPortalPath } from "@/policies/authorization";
@@ -9,9 +18,22 @@ import { recordAuditEvent } from "@/repositories/audit-repository";
 import { loadAuthenticatedActor } from "@/repositories/auth-repository";
 import { loginSchema } from "@/schemas/auth";
 
+// Limits tuned for ~100-200 students sharing one school Wi-Fi NAT IP while still
+// stopping credential-stuffing and single-account brute-force attacks globally.
+const LOGIN_WINDOW_MS = 5 * 60_000;
+const LOGIN_IP_TOTAL_BURST_LIMIT = 300;
+const LOGIN_IP_FAILURE_LIMIT = 25;
+const LOGIN_EMAIL_FAILURE_LIMIT = 8;
+const LOGIN_EMAIL_BURST_LIMIT = 20;
+
 export async function POST(request: Request) {
-  const rateBlocked = enforceApiRateLimit(request, "auth:login:ip", 15, 5 * 60_000);
-  if (rateBlocked) return rateBlocked;
+  const { blocked: burstBlocked, ipKeyHash } = await enforceDistributedIpRateLimit({
+    request,
+    scope: "auth:login:burst",
+    limit: LOGIN_IP_TOTAL_BURST_LIMIT,
+    windowMs: LOGIN_WINDOW_MS,
+  });
+  if (burstBlocked) return burstBlocked;
 
   const envStatus = getPublicEnvStatus();
   if (!envStatus.configured) {
@@ -38,19 +60,44 @@ export async function POST(request: Request) {
   }
 
   const emailNormalized = parsed.data.email.toLowerCase();
-  const accountRate = checkRateLimit({
-    key: `auth:login:email:${emailNormalized}`,
-    limit: 8,
-    windowMs: 5 * 60_000,
-  });
+  const emailHash = hashRateLimitIdentifier(emailNormalized);
+  const failIpKey = `auth:login:fail:ip:${ipKeyHash}`;
+  const failEmailKey = `auth:login:fail:email:${emailHash}`;
+  const burstEmailKey = `auth:login:burst:email:${emailHash}`;
 
-  if (!accountRate.allowed) {
-    return NextResponse.json(
-      {
-        error: "Terlalu banyak percobaan masuk untuk akun ini. Silakan tunggu beberapa menit.",
-        code: "RATE_LIMITED",
-      },
-      { status: 429, headers: { "Retry-After": String(accountRate.retryAfterSeconds) } }
+  const [ipFailCheck, emailFailCheck, emailBurstCheck] = await Promise.all([
+    checkDistributedRateLimit({
+      key: failIpKey,
+      limit: LOGIN_IP_FAILURE_LIMIT,
+      windowMs: LOGIN_WINDOW_MS,
+      increment: false,
+    }),
+    checkDistributedRateLimit({
+      key: failEmailKey,
+      limit: LOGIN_EMAIL_FAILURE_LIMIT,
+      windowMs: LOGIN_WINDOW_MS,
+      increment: false,
+    }),
+    checkDistributedRateLimit({
+      key: burstEmailKey,
+      limit: LOGIN_EMAIL_BURST_LIMIT,
+      windowMs: LOGIN_WINDOW_MS,
+      increment: true,
+    }),
+  ]);
+
+  if (!ipFailCheck.allowed) {
+    return buildRateLimitResponse(
+      ipFailCheck.retryAfterSeconds,
+      "Terlalu banyak percobaan login gagal dari jaringan ini. Silakan tunggu beberapa menit."
+    );
+  }
+
+  if (!emailFailCheck.allowed || !emailBurstCheck.allowed) {
+    const retryAfter = Math.max(emailFailCheck.retryAfterSeconds, emailBurstCheck.retryAfterSeconds);
+    return buildRateLimitResponse(
+      retryAfter,
+      "Terlalu banyak percobaan masuk untuk akun ini. Silakan tunggu beberapa menit."
     );
   }
 
@@ -61,6 +108,21 @@ export async function POST(request: Request) {
   });
 
   if (signInError) {
+    await Promise.all([
+      checkDistributedRateLimit({
+        key: failIpKey,
+        limit: LOGIN_IP_FAILURE_LIMIT,
+        windowMs: LOGIN_WINDOW_MS,
+        increment: true,
+      }),
+      checkDistributedRateLimit({
+        key: failEmailKey,
+        limit: LOGIN_EMAIL_FAILURE_LIMIT,
+        windowMs: LOGIN_WINDOW_MS,
+        increment: true,
+      }),
+    ]);
+
     return NextResponse.json(
       {
         error: mapAuthErrorToSafeMessage(signInError.message),
@@ -73,6 +135,12 @@ export async function POST(request: Request) {
   const actor = await loadAuthenticatedActor(supabase);
   if (!actor) {
     await supabase.auth.signOut();
+    await checkDistributedRateLimit({
+      key: failEmailKey,
+      limit: LOGIN_EMAIL_FAILURE_LIMIT,
+      windowMs: LOGIN_WINDOW_MS,
+      increment: true,
+    });
     return NextResponse.json(
       {
         error: "Akun Anda belum aktif atau belum terhubung dengan profil sekolah.",
@@ -81,6 +149,8 @@ export async function POST(request: Request) {
       { status: 403 }
     );
   }
+
+  await resetDistributedRateLimit(failEmailKey);
 
   const auditCtx = buildAuditContext(request);
   await recordAuditEvent(supabase, {

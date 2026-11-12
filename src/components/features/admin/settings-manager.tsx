@@ -189,9 +189,9 @@ export function SettingsManager({
 
           <Card>
             <CardHeader>
-              <CardTitle>Kebijakan Dasar Ujian (Persiapan Fase 2)</CardTitle>
+              <CardTitle>Kebijakan Dasar Ujian Sekolah</CardTitle>
               <CardDescription>
-                Parameter ini menjadi standar kebijakan sekolah saat modul ujian diaktifkan.
+                Parameter default ini berlaku untuk pelaksanaan dan rilis nilai ujian di sekolah.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">

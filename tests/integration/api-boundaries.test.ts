@@ -25,7 +25,7 @@ describe("API Route Handler Security & Authorization Boundaries", () => {
     const json = (await response.json()) as Record<string, unknown>;
     expect([200, 503]).toContain(response.status);
     expect(json.service).toBe("ujiankita-web");
-    expect(json.phase).toBe("phase-1");
+    expect(json.phase).toBe("phase-6");
     expect(JSON.stringify(json)).not.toContain("SERVICE_ROLE");
   });
 

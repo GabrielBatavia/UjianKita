@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
-import { enforceApiRateLimit, parseJsonBody } from "@/lib/api-helpers";
+import { enforceDistributedIpRateLimit, parseJsonBody } from "@/lib/api-helpers";
 import { getPublicEnvStatus } from "@/lib/env";
 import { mapAuthErrorToSafeMessage } from "@/lib/security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resetPasswordSchema } from "@/schemas/auth";
 
 export async function POST(request: Request) {
-  const rateBlocked = enforceApiRateLimit(request, "auth:reset-password", 8, 10 * 60_000);
+  const { blocked: rateBlocked } = await enforceDistributedIpRateLimit({
+    request,
+    scope: "auth:reset-password",
+    limit: 20,
+    windowMs: 10 * 60_000,
+  });
   if (rateBlocked) return rateBlocked;
 
   if (!getPublicEnvStatus().configured) {

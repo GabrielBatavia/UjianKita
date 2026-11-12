@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const PHASE1_PILLARS = [
+const PLATFORM_PILLARS = [
   {
     icon: Lock,
     title: "Autentikasi & Kontrol Akses Server",
@@ -22,21 +22,21 @@ const PHASE1_PILLARS = [
   },
   {
     icon: Users,
-    title: "Manajemen Akademik Terstruktur",
+    title: "Manajemen Akademik & Bank Soal",
     description:
-      "Pengelolaan data siswa, guru, tahun ajaran, kelas, mata pelajaran, penugasan mengajar, serta pencatatan log audit tindakan sensitif.",
+      "Pengelolaan data siswa, guru, kelas, tahun ajaran, bank soal terversi, serta pencatatan log audit tindakan sensitif secara append-only.",
   },
   {
     icon: Smartphone,
     title: "Siap Mobile untuk ExamBro & SEB",
     description:
-      "Antarmuka siswa dirancang mobile-first untuk ponsel Android dan iPhone dengan dukungan arsitektur integrasi ExamBro dan Safe Exam Browser (SEB).",
+      "Antarmuka siswa dirancang mobile-first untuk ponsel Android dan iPhone dengan dukungan verifikasi kriptografi Safe Exam Browser (SEB), QR ExamBro, dan pemantauan langsung.",
   },
   {
     icon: BookOpenCheck,
-    title: "Fondasi Ujian Berintegritas Tinggi",
+    title: "Mesin Ujian & Penilaian Terintegritas",
     description:
-      "Dirancang untuk Fase 2 dengan kontrak penyimpanan jawaban idempoten, revisi monotonik, pengatur waktu otoritatif server, dan bukti pengumpulan.",
+      "Penyimpanan jawaban idempoten dengan revisi monotonik, pengatur waktu otoritatif server, koreksi otomatis maupun esai, dan bukti pengumpulan resmi.",
   },
 ];
 
@@ -70,7 +70,7 @@ export default function LandingPage() {
             <div className="max-w-3xl">
               <Badge variant="default" className="mb-4">
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Fase 1 — Fondasi Platform &amp; Administrasi Akademik</span>
+                <span>Platform Ujian Sekolah Berbasis Komputer (CBT)</span>
               </Badge>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
                 Platform Ujian Sekolah Berbasis Komputer yang Terukur dan Terpercaya
@@ -88,7 +88,7 @@ export default function LandingPage() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href="#arsitektur-fase1">Lihat Cakupan Fase 1</a>
+                  <a href="#kapabilitas-platform">Lihat Kapabilitas Platform</a>
                 </Button>
               </div>
             </div>
@@ -96,20 +96,20 @@ export default function LandingPage() {
         </section>
 
         {/* Capabilities */}
-        <section id="arsitektur-fase1" className="py-14 sm:py-16">
+        <section id="kapabilitas-platform" className="py-14 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="max-w-2xl">
               <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 Pilar Arsitektur UjianKita
               </h2>
               <p className="mt-2 text-sm text-slate-600 sm:text-base">
-                Fase 1 berfokus pada fondasi keamanan, manajemen data akademik, dan kesiapan
-                operasional sebelum aktivasi mesin ujian pada Fase 2.
+                Dirancang end-to-end mulai dari manajemen akademik sekolah, bank soal terversi,
+                pelaksanaan ujian tahan gangguan, hingga pengawasan dan penilaian resmi.
               </p>
             </div>
 
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
-              {PHASE1_PILLARS.map((item) => {
+              {PLATFORM_PILLARS.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Card key={item.title}>
@@ -167,8 +167,8 @@ export default function LandingPage() {
                     <span>Akses daftar kelas dan mata pelajaran yang diampu.</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-                    <span>Bank soal, perakitan ujian, dan koreksi disiapkan untuk Fase 2.</span>
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>Kelola bank soal terversi, terbitkan snapshot ujian, pantau sesi langsung, dan tinjau nilai.</span>
                   </div>
                 </CardContent>
               </Card>
@@ -186,8 +186,8 @@ export default function LandingPage() {
                     <span>Lihat profil siswa, kelas aktif, dan daftar mata pelajaran.</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-                    <span>Pelaksanaan ujian dan riwayat nilai tersedia mulai Fase 2.</span>
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>Ikuti ujian terjadwal dengan autosave terkonfirmasi, bukti pengumpulan, dan riwayat nilai.</span>
                   </div>
                 </CardContent>
               </Card>
@@ -198,7 +198,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-slate-200 bg-white py-6">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 px-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:px-6">
-          <p>UjianKita — Fondasi Fase 1 (Belum untuk pelaksanaan ujian resmi sebelum Fase 2 selesai).</p>
+          <p>UjianKita — Platform Ujian Berbasis Komputer (CBT) Terintegrasi untuk Sekolah Indonesia.</p>
           <div className="flex items-center gap-4">
             <Link href="/login" className="font-medium text-slate-700 hover:text-blue-700">
               Masuk

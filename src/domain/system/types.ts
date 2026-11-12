@@ -1,7 +1,7 @@
 export interface HealthCheckReport {
   status: "healthy" | "degraded";
   service: "ujiankita-web";
-  phase: "phase-1";
+  phase: "phase-6";
   timestampUtc: string;
   supabase: {
     configured: boolean;
