@@ -93,6 +93,73 @@ function getBrowserOnlineServerSnapshot(): boolean {
   return true;
 }
 
+interface ExamCountdownBadgeProps {
+  initialRemainingMs: number;
+  deadlineMs: number;
+  clockOffsetMsRef: React.RefObject<number>;
+  attemptStatus: AttemptLifecycleStatus;
+  onExpire: () => void;
+}
+
+const ExamCountdownBadge = React.memo(function ExamCountdownBadge({
+  initialRemainingMs,
+  deadlineMs,
+  clockOffsetMsRef,
+  attemptStatus,
+  onExpire,
+}: ExamCountdownBadgeProps) {
+  const [remainingMs, setRemainingMs] = React.useState(initialRemainingMs);
+
+  React.useEffect(() => {
+    const estimatedServerNowMs = Date.now() + (clockOffsetMsRef.current ?? 0);
+    setRemainingMs(Math.max(0, deadlineMs - estimatedServerNowMs));
+  }, [deadlineMs, clockOffsetMsRef]);
+
+  React.useEffect(() => {
+    if (attemptStatus !== "IN_PROGRESS" && attemptStatus !== "SUBMITTING") return;
+    const tick = setInterval(() => {
+      const estimatedServerNowMs = Date.now() + (clockOffsetMsRef.current ?? 0);
+      const rem = Math.max(0, deadlineMs - estimatedServerNowMs);
+      setRemainingMs(rem);
+      if (rem === 0) {
+        onExpire();
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [attemptStatus, deadlineMs, clockOffsetMsRef, onExpire]);
+
+  const isWarningTime = remainingMs <= 10 * 60_000 && remainingMs > 5 * 60_000;
+  const isCriticalTime = remainingMs <= 5 * 60_000;
+
+  return (
+    <div
+      role="timer"
+      aria-label={`Sisa waktu ${formatCountdownMs(remainingMs)}`}
+      className={cn(
+        "flex shrink-0 min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-sm sm:text-base font-bold shadow-2xs",
+        isCriticalTime
+          ? "border-rose-300 bg-rose-50 text-rose-700 animate-pulse"
+          : isWarningTime
+            ? "border-amber-300 bg-amber-50 text-amber-900"
+            : "border-slate-200 bg-slate-50 text-slate-900"
+      )}
+    >
+      <Clock
+        className={cn(
+          "h-4 w-4",
+          isCriticalTime
+            ? "text-rose-600"
+            : isWarningTime
+              ? "text-amber-600"
+              : "text-slate-500"
+        )}
+        aria-hidden="true"
+      />
+      <span>{formatCountdownMs(remainingMs)}</span>
+    </div>
+  );
+});
+
 export function ExamPlayerClient({
   initialWorkspace,
   securityPolicy = null,
@@ -120,10 +187,24 @@ export function ExamPlayerClient({
   React.useEffect(() => {
     clockOffsetMsRef.current = Date.parse(initialWorkspace.serverNowUtc) - Date.now();
   }, [initialWorkspace.serverNowUtc]);
-  const [remainingMs, setRemainingMs] = React.useState<number>(initialWorkspace.remainingMs);
 
   const [currentIdx, setCurrentIdx] = React.useState<number>(0);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+
+  // Lock body scroll and close on Escape when palette overlay is open
+  React.useEffect(() => {
+    if (!paletteOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPaletteOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    const originalStyle = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalStyle;
+    };
+  }, [paletteOpen]);
 
   const browserOnline = React.useSyncExternalStore(
     subscribeBrowserOnline,
@@ -397,7 +478,6 @@ export function ExamPlayerClient({
       const data = (await res.json()) as AttemptTimeSyncPayload;
       clockOffsetMsRef.current = Date.parse(data.serverNowUtc) - Date.now();
       setDeadlineMs(Date.parse(data.deadlineAtUtc));
-      setRemainingMs(data.remainingMs);
       if (data.status !== "IN_PROGRESS" && data.status !== "SUBMITTING") {
         setAttemptStatus(data.status);
       }
@@ -412,20 +492,6 @@ export function ExamPlayerClient({
     }, 45_000);
     return () => clearInterval(syncTimer);
   }, [syncServerClock]);
-
-  // Smooth local countdown ticking from server-corrected clock offset
-  React.useEffect(() => {
-    if (attemptStatus !== "IN_PROGRESS" && attemptStatus !== "SUBMITTING") return;
-    const tick = setInterval(() => {
-      const estimatedServerNowMs = Date.now() + clockOffsetMsRef.current;
-      const rem = Math.max(0, deadlineMs - estimatedServerNowMs);
-      setRemainingMs(rem);
-      if (rem === 0) {
-        void syncServerClock();
-      }
-    }, 1000);
-    return () => clearInterval(tick);
-  }, [attemptStatus, deadlineMs, syncServerClock]);
 
   const flushMonitoringQueue = React.useCallback(
     async (useBeacon = false) => {
@@ -757,9 +823,6 @@ export function ExamPlayerClient({
   const flaggedCount = questions.filter((q) => q.isFlaggedForReview).length;
   const activeQuestion = questions[currentIdx];
 
-  const isWarningTime = remainingMs <= 10 * 60_000 && remainingMs > 5 * 60_000;
-  const isCriticalTime = remainingMs <= 5 * 60_000;
-
   if (attemptStatus === "SUBMITTED" || attemptStatus === "EXPIRED" || attemptStatus === "CANCELLED_BY_ADMIN") {
     return (
       <div className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-4 py-10">
@@ -820,31 +883,13 @@ export function ExamPlayerClient({
             </div>
 
             {/* Authoritative Server Timer */}
-            <div
-              role="timer"
-              aria-label={`Sisa waktu ${formatCountdownMs(remainingMs)}`}
-              className={cn(
-                "flex shrink-0 min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-sm sm:text-base font-bold shadow-2xs",
-                isCriticalTime
-                  ? "border-rose-300 bg-rose-50 text-rose-700 animate-pulse"
-                  : isWarningTime
-                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-slate-200 bg-slate-50 text-slate-900"
-              )}
-            >
-              <Clock
-                className={cn(
-                  "h-4 w-4",
-                  isCriticalTime
-                    ? "text-rose-600"
-                    : isWarningTime
-                      ? "text-amber-600"
-                      : "text-slate-500"
-                )}
-                aria-hidden="true"
-              />
-              <span>{formatCountdownMs(remainingMs)}</span>
-            </div>
+            <ExamCountdownBadge
+              initialRemainingMs={initialWorkspace.remainingMs}
+              deadlineMs={deadlineMs}
+              clockOffsetMsRef={clockOffsetMsRef}
+              attemptStatus={attemptStatus}
+              onExpire={syncServerClock}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-1.5 text-xs">
@@ -961,7 +1006,7 @@ export function ExamPlayerClient({
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           {/* Active Question Workspace */}
-          <main className="space-y-4">
+          <main className="space-y-4 pb-24 lg:pb-8">
             {activeQuestion ? (
               <Card className="border-slate-200 bg-white shadow-sm">
                 <CardHeader className="border-b border-slate-100 pb-4">
@@ -1352,9 +1397,16 @@ export function ExamPlayerClient({
           role="dialog"
           aria-modal="true"
           aria-label="Navigasi nomor soal"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4 lg:hidden"
+          className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4 lg:hidden"
         >
-          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl pb-safe shadow-2xl">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setPaletteOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl pb-safe shadow-2xl animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Daftar Nomor Soal</h2>

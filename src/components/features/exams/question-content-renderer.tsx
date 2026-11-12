@@ -18,7 +18,9 @@ export function QuestionContentRenderer({
   return (
     <div
       className={cn(
-        "prose-sm max-w-none break-words text-slate-800 leading-relaxed [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto",
+        "prose-sm max-w-none break-words text-slate-800 leading-relaxed",
+        "[&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1",
+        "[&_.katex]:max-w-full [&_.katex]:overflow-x-auto [&_.katex]:overflow-y-hidden [&_.katex]:inline-block [&_.katex]:align-middle",
         className
       )}
       dangerouslySetInnerHTML={{ __html: safeHtml }}

@@ -1,3 +1,5 @@
+process.env.ENABLE_DEV_PREVIEW = "true";
+
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 3100);
@@ -8,7 +10,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 2,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: BASE_URL,
@@ -35,5 +37,8 @@ export default defineConfig({
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
+        env: {
+          ENABLE_DEV_PREVIEW: "true",
+        },
       },
 });
