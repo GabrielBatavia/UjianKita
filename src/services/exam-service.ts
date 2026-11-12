@@ -316,6 +316,8 @@ export async function createExamService(
       passing_score: input.passingScore,
       randomize_questions: input.randomizeQuestions,
       randomize_options: input.randomizeOptions,
+      result_release_policy: input.resultReleasePolicy,
+      allow_student_review: input.allowStudentReview,
       starts_at: input.startsAt ?? null,
       ends_at: input.endsAt ?? null,
     })
@@ -415,6 +417,8 @@ export async function updateExamService(
       passing_score: input.passingScore,
       randomize_questions: input.randomizeQuestions,
       randomize_options: input.randomizeOptions,
+      result_release_policy: input.resultReleasePolicy,
+      allow_student_review: input.allowStudentReview,
       starts_at: input.startsAt ?? null,
       ends_at: input.endsAt ?? null,
       status: "DRAFT",

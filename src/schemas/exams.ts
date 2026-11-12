@@ -85,6 +85,10 @@ export const createExamSchema = z.object({
   passingScore: z.coerce.number().min(0, "Nilai ketuntasan tidak boleh negatif").default(70),
   randomizeQuestions: z.boolean().default(false),
   randomizeOptions: z.boolean().default(false),
+  resultReleasePolicy: z
+    .enum(["manual", "after_submit_if_no_essay", "after_window_close"])
+    .default("manual"),
+  allowStudentReview: z.boolean().default(false),
   startsAt: z.string().datetime({ offset: true }).optional().nullable(),
   endsAt: z.string().datetime({ offset: true }).optional().nullable(),
   classIds: z.array(z.string().uuid()).default([]),

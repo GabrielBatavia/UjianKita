@@ -35,7 +35,17 @@ export type AuditAction =
   | "exam.closed"
   | "exam.archived"
   | "exam.admin_closed"
-  | "exam.admin_archived";
+  | "exam.admin_archived"
+  | "attempt.started"
+  | "attempt.resumed"
+  | "attempt.submitted"
+  | "attempt.expired"
+  | "attempt.cancelled"
+  | "grading.essay_saved"
+  | "grading.finalized"
+  | "grading.adjusted"
+  | "results.released"
+  | "results.unpublished";
 
 export interface AuditEventInput {
   schoolId: string;
