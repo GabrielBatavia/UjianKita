@@ -43,8 +43,9 @@ UjianKita separates **offline verification** (domain unit tests, schema validati
 - `phase4-monitoring-api.test.ts`:
   - **Offline Mocked Service-Boundary Tests:** Verifies zero SEB ConfigKey/BEK hash exposure to students, `VERIFIED_SEB_REQUIRED` blocking on attempt start & workspace load even under spoofed SEB/ExamBro `User-Agent` headers, valid SHA-256 request-hash & active emergency override access, bounded telemetry metadata/batch validation, fail-safe answer saves & submissions independent of monitoring RPCs, and role permission boundaries across heartbeats, batched events, incident review transitions, overrides, and Admin retention purge.
   - **Live PostgreSQL & RPC Suite (`describe.skipIf(!hasLiveSupabase)`):** Verified against live local Supabase (`000001`–`000010`).
-- **Phase 5 Dedicated Live-DB Integration Suites (`tests/integration/phase5-rls-and-cross-school.test.ts` & `tests/integration/phase5-e2e-concurrency-invariants.test.ts`) + Unit Suite (`tests/unit/phase5-seb-and-grading-vectors.test.ts`):**
-  - Verifies cross-school RLS isolation, `auditor` read-only vs `proctor`/`exam_coordinator` write enforcement (`000010`), `auth_student_id() IS NULL` ownership checks, snake_case option randomization, parallel attempt start uniqueness, stale revision rejection, expired deadline finalization (`finalize_expired_exam_attempts`), incident deduplication, and monitoring/grade decoupling. All **21 files / 92 tests** pass when `RUN_LIVE_DB_TESTS=true`.
+- **Phase 6 Distributed Rate-Limiting & Cloud PostgreSQL Suites (`tests/integration/phase6-login-rate-limit.test.ts`):**
+  - Verifies distributed PostgreSQL token bucket (`consume_rate_limit`, `reset_rate_limit_bucket`), shared NAT IP cohort burst allowance (`4/4` parallel logins), failed-login penalty throttling, account-specific throttling, and privilege revocation from unprivileged roles (`REVOKE ALL FROM PUBLIC, anon, authenticated`).
+  - Total test suite: **22 files / 96 tests** passing with zero skips when `RUN_LIVE_DB_TESTS=true`. Live cloud PostgreSQL 17 integration suites verify 30 tests directly on `hqoxqmmkysnnneqlepuj`. Live Production E2E tests run on `https://ujiankita-three.vercel.app`.
 
 ---
 

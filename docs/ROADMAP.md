@@ -53,12 +53,22 @@ Aligned with **Stage 1–6** of the *School Examination Platform — Complete Te
 
 ---
 
-## Phase 5 — Local DB Integration, Hardening & Production Readiness
+## Phase 6 & 6.5 — Cloud Integration, Distributed Rate Limiting & Controlled Production Cutover (Completed)
 
-- **Completed in Repository / Local Supabase:**
-  - Live local Supabase PostgreSQL execution across all 10 migrations (`000001`–`000010`) via `supabase db reset`, fixing 3 live DB issues (`BUG-01`, `BUG-02`, `BUG-03`) in migration `000010` and fixing a Node 22 SSR `navigator.onLine` hydration mismatch (`#418`) in `ExamPlayerClient`.
-  - All 21 Vitest files / 92 tests (`RUN_LIVE_DB_TESTS=true`), 24 Playwright Chromium + Pixel 7 E2E/WCAG checks (authenticated + unauthenticated), `pg_dump` / `pg_restore` schema + checksum verification, and 100-concurrent-student exam & monitoring load benchmarks verified cleanly on local Docker Supabase.
-- **Remaining Before Official High-Stakes Production Launch (`docs/PRODUCTION_READINESS_GAPS.md`):**
-  - Centralized distributed rate limiting (Upstash/Redis) ahead of multi-instance serverless scaling and shared school Wi-Fi NAT cohort login capacity planning.
-  - External cloud Supabase Pro (managed PITR backups) & Vercel Pro provisioning.
-  - Controlled school pilot on physical Android ExamBro & iOS/macOS Safe Exam Browser hardware, TOTP MFA enforcement for staff, and formal Go / No-Go sign-off.
+- **Scope:**
+  - Applied and verified all 11 SQL migrations (`20261112000001`–`20261112000011`) against hosted Supabase PostgreSQL 17.11 (`hqoxqmmkysnnneqlepuj`).
+  - Implemented database-backed distributed rate limiting (`api_rate_limits` + `consume_rate_limit` RPC) in migration `000011` with school Wi-Fi NAT cohort burst tuning.
+  - Linked Vercel Production (`https://ujiankita-three.vercel.app`) to `hqoxqmmkysnnneqlepuj`, eliminated stale integration environment variables, and optimized serverless execution to Mumbai (`bom1`), cutting latency from ~822–1194 ms to ~246–392 ms.
+  - Disabled public signup (`enable_signup = false`) and locked callback URLs.
+  - Merged PR #7 into `main` (`7be77ff`) and verified full end-to-end student/teacher/admin workflows live on Production.
+- **Status:** **Completed & Verified Live on Production.** Operational classification: Controlled Evaluation / Closed Pilot Preparation.
+
+---
+
+## Phase 7 — Supervised School Pilot & Hardware Field Validation (Upcoming)
+
+- **Target Scope:**
+  - Pilot testing with physical Android phones running `com.dekikurnia.exambro` and iOS/macOS devices running Safe Exam Browser.
+  - Multi-proctor staging soak tests under live cloud conditions.
+  - Supabase Pro commercial provisioning (automated PITR backups & SLA).
+  - Staff TOTP MFA rollout.
